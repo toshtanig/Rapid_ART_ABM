@@ -1,0 +1,31 @@
+# =============================================================================
+# environment.yml
+# Conda environment for the Rapid ART cost-effectiveness microsimulation.
+# Recreates the environment ("prep_sim") used for the published analysis, whose
+# versions are reported in the article Methods (Python 3.11.15, linux-64).
+#
+# Create the environment:
+#     conda env create -f environment.yml
+#     conda activate rapid-art
+#
+# The pins below reproduce the scientific stack. The MKL-backed NumPy build from
+# the default channels was used for the published results; an exact byte-for-byte
+# reproduction therefore requires conda rather than pip.
+# =============================================================================
+name: rapid-art
+channels:
+  - defaults
+dependencies:
+  - python=3.11.15
+  - numpy=2.4.3
+  - scipy=1.17.1
+  - pandas=3.0.1
+  - numba=0.64.0
+  - llvmlite=0.46.0
+  - matplotlib=3.10.8
+  - seaborn=0.13.2
+  - pillow=12.1.1
+  # Manuscript / Supplement build pipeline only (not required for the model):
+  - pip
+  - pip:
+      - python-docx>=1.1.0

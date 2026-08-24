@@ -1,0 +1,64 @@
+cff-version: 1.2.0
+title: >-
+  Rapid ART cost-effectiveness microsimulation for HIV in Japan
+message: >-
+  If you use this software or its outputs, please cite both the
+  accompanying article and this archived software release.
+type: software
+authors:
+  - given-names: Toshibumi
+    family-names: Taniguchi
+    affiliation: >-
+      Department of Infectious Diseases, Chiba University Hospital,
+      Chiba, Japan
+    email: tosh-tanig@chiba-u.jp
+    orcid: 'https://orcid.org/0000-0002-7732-9870'
+  - given-names: Mayumi
+    family-names: Imahashi
+    affiliation: >-
+      Department of Infectious Diseases and Immunology, Clinical Research
+      Center, National Hospital Organization Nagoya Medical Center,
+      Nagoya, Japan
+    orcid: 'https://orcid.org/0000-0003-3464-4106'
+  - given-names: Daisuke
+    family-names: Sato
+    affiliation: >-
+      Hospital and Health Administration, Fujita Health University,
+      Toyoake, Japan
+    orcid: 'https://orcid.org/0009-0006-1097-5970'
+  - given-names: Tatsuya
+    family-names: Noda
+    affiliation: >-
+      Department of Public Health Informatics, Kansai Medical University,
+      Osaka, Japan
+    orcid: 'https://orcid.org/0000-0002-3652-7547'
+repository-code: 'https://github.com/toshtanig/Rapid_ART_ABM'
+license: MIT
+version: 1.0.0
+date-released: '2026-08-24'
+doi: '10.5281/zenodo.21931762'
+keywords:
+  - HIV
+  - antiretroviral therapy
+  - rapid ART
+  - cost-effectiveness analysis
+  - agent-based model
+  - dynamic transmission model
+  - Japan
+  - health policy
+preferred-citation:
+  type: article
+  title: >-
+    Treating earlier, spending less: cost-effectiveness and budget impact
+    of immediate versus delayed antiretroviral therapy for HIV in Japan
+  authors:
+    - given-names: Toshibumi
+      family-names: Taniguchi
+    - given-names: Mayumi
+      family-names: Imahashi
+    - given-names: Daisuke
+      family-names: Sato
+    - given-names: Tatsuya
+      family-names: Noda
+  journal: The Lancet Regional Health - Western Pacific
+  year: 2026
