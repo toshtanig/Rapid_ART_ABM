@@ -1,0 +1,3 @@
+comparison,horizon_years,n_seeds,Infections averted (95% CI),Deaths averted (95% CI),"Incremental QALYs, direct (95% CI)","Cost saving, billion yen (95% CI)","NMB, billion yen (95% CI)",dominant_seeds
+0m vs 1m,20,200,1971 (1879 to 2063),646 (612 to 681),2922 (2068 to 3777),18.0 (16.6 to 19.4),32.6 (27.9 to 37.3),126/200
+0m vs 2m,20,200,2962 (2865 to 3059),997 (962 to 1032),5556 (4683 to 6429),28.2 (26.6 to 29.8),55.9 (50.8 to 61.1),165/200
