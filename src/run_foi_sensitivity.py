@@ -15,7 +15,7 @@ import datetime
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # --- Data location: set BASE_144 to your local 144_scenario folder ---
-BASE_144 = r"/path/to/20250315_169/144_scenario"
+BASE_144 = r"/path/to/project/144_scenario"
 PROJ_169 = os.path.dirname(BASE_144)
 BASE_169 = PROJ_169
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -23,28 +23,28 @@ OUT_BASE    = os.path.join(BASE_169, "144_scenario")
 
 ANALYTIC_MULTIPLIERS = [1.00, 1.10, 1.18, 1.25, 1.30]
 
-FOI_TERMINAL = "Raptorlake"   # "Raptorlake" / "Blackwell" / "MSI" / "Mouse" / "Dell"
+FOI_TERMINAL = "node1"   # "node1" / "node2" / "node3" / "node4" / "node5"
 FOI_SEED_SETS = {
-    "Raptorlake": [   # 27 seeds (22min) ~49.5h
+    "node1": [   # 27 seeds (22min) ~49.5h
         14, 18, 24, 42, 55, 58, 61, 66, 69, 71,
         75, 77, 87, 97, 101, 102, 104, 107, 110, 119,
         123, 128, 145, 150, 157, 161, 176,
     ],
-    "Blackwell": [    # 23 seeds (25min) ~47.9h
+    "node2": [    # 23 seeds (25min) ~47.9h
         178, 188, 194, 202, 203, 206, 207, 209, 216, 219,
         225, 228, 234, 244, 247, 249, 276, 286, 303, 306,
         308, 309, 313,
     ],
-    "MSI": [          # 21 seeds (28min) ~49.0h
+    "node3": [          # 21 seeds (28min) ~49.0h
         317, 327, 330, 340, 341, 345, 347, 355, 356, 363,
         364, 380, 389, 404, 417, 424, 427, 441, 448, 456,
         465,
     ],
-    "Mouse": [        # 15 seeds (38min) ~47.5h
+    "node4": [        # 15 seeds (38min) ~47.5h
         466, 469, 472, 477, 484, 486, 488, 492, 495, 504,
         505, 508, 515, 516, 527,
     ],
-    "Dell": [         # 14 seeds (42min) ~49.0h
+    "node5": [         # 14 seeds (42min) ~49.0h
         536, 543, 547, 567, 581, 582, 585, 586, 590, 592,
         596, 606, 608, 613,
     ],

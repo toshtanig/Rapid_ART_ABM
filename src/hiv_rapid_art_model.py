@@ -42,9 +42,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # =============================================================================
-
+# CONFIG: output folder
 # =============================================================================
-DEFAULT_BASE_OUTPUT_DIR = r"/path/to/20250315_169/144_scenario/core"
+DEFAULT_BASE_OUTPUT_DIR = r"/path/to/project/144_scenario/core"
 
 BASE_OUTPUT_DIR = os.environ.get("OUTPUT_BASE_DIR", os.environ.get("OUTPUT_DIR", DEFAULT_BASE_OUTPUT_DIR))
 OUTPUT_DIR = BASE_OUTPUT_DIR
@@ -52,7 +52,7 @@ OUTPUT_DIR = BASE_OUTPUT_DIR
 SAVE_CD4_INDIVIDUAL_CSV = False
 
 # =============================================================================
-
+# Run label, random seed and analytic horizon
 # =============================================================================
 RUN_LABEL = "hiv_rapid_art_model"
 
@@ -62,7 +62,7 @@ months_per_year = 12
 simulation_months = years * months_per_year
 
 # =============================================================================
-
+# QALY discounting and health-state utilities
 # =============================================================================
 USE_DISCOUNTING_QALY = True
 DISCOUNT_RATE_QALY = 0.02
@@ -83,17 +83,7 @@ UTILITY_CD4_LT200   = 0.65
 MENTAL_HEALTH_UTIL_LOSS = 0.06
 
 # =============================================================================
-
-# =============================================================================
-
-#
-
-#
-
-#
-
-#
-
+# Inflow of people with HIV from abroad (per year)
 # =============================================================================
 
 FOREIGN_INFLUX_BURNIN_MSM_ANNUAL  = 25
@@ -105,15 +95,7 @@ FOREIGN_INFLUX_MAIN_HETM_ANNUAL   = 16
 FOREIGN_INFLUX_MAIN_HETF_ANNUAL   = 13
 
 # =============================================================================
-
-# =============================================================================
-
-#
-
-#
-
-#
-
+# Initial distribution of people with HIV by population group
 # =============================================================================
 INITIAL_HIV_MSM_RATIO  = 0.75
 INITIAL_HIV_HETM_RATIO = 0.125
@@ -123,13 +105,13 @@ assert abs(INITIAL_HIV_MSM_RATIO + INITIAL_HIV_HETM_RATIO
        "INITIAL_HIV ratios must sum to 1.0"
 
 # =============================================================================
-
+# Heterogeneity tracking
 # =============================================================================
 
 ENABLE_HETEROGENEITY_TRACKING = True
 
 # =============================================================================
-
+# Scenarios
 # =============================================================================
 
 SCENARIO_0_ENABLED = True
@@ -138,13 +120,64 @@ SCENARIO_2_ENABLED = True
 
 GRID_SEARCH_ENABLED = False
 
+# Scenario configuration. Each scenario is defined by the certification policy
+# applied to diagnosed individuals in the analytic period:
+#   immediate        True  -> ART starts in the month of diagnosis (or in the month
+#                             eligibility is first met when apply_criteria is True)
+#                    False -> a gamma-distributed eligibility-to-ART delay with the
+#                             given mean and SD (months) is applied
+#   apply_criteria   True  -> the statutory CD4/HIV-RNA certification criteria are
+#                             applied at diagnosis, with monthly re-evaluation
+#                    False -> every diagnosed individual is eligible
+#   policy_start_year (optional) -> before this calendar year the scenario behaves
+#                             as the current pathway (POLICY_START_FALLBACK_CONFIG);
+#                             used for delayed-implementation analyses
+# The three default scenarios reproduce the published model exactly.
 SCENARIO_CONFIGS = {
-    "0 month": {"delay_mean": 0.0, "delay_sd": 0.0, "csv_label": "scenario0"},
-    "1 month": {"delay_mean": 1.0, "delay_sd": 0.5, "csv_label": "scenario1"},
-    "2 months": {"delay_mean": 2.0, "delay_sd": 0.5, "csv_label": "scenario2"},
+    "0 month": {"delay_mean": 0.0, "delay_sd": 0.0, "csv_label": "scenario0",
+                "immediate": True, "apply_criteria": False},
+    "1 month": {"delay_mean": 1.0, "delay_sd": 0.5, "csv_label": "scenario1",
+                "immediate": False, "apply_criteria": True},
+    "2 months": {"delay_mean": 2.0, "delay_sd": 0.5, "csv_label": "scenario2",
+                 "immediate": False, "apply_criteria": True},
 }
 
+# Configuration in force before policy_start_year in delayed-implementation
+# scenarios: the current certification pathway with a one-month minimum delay.
+POLICY_START_FALLBACK_CONFIG = {"delay_mean": 1.0, "delay_sd": 0.5,
+                                "immediate": False, "apply_criteria": True}
+
+# Optional explicit list of scenario labels to run (set by driver scripts);
+# None falls back to the SCENARIO_*_ENABLED flags.
+ENABLED_SCENARIO_LABELS = None
+
+# Timing convention for scheduled ART starts (sensitivity analysis A11_timing_convention).
+# False (published behaviour): a person whose scheduled start month arrives starts ART at the beginning
+# of that monthly cycle and receives the first viral-load update in the same cycle, whereas a person who
+# starts immediately at diagnosis (after the viral-load update of the diagnosis month) receives the first
+# update one month later; the realised difference in the onset of viral-load decline between immediate
+# ART and a wait of k months is therefore k - 1 months.
+# True: the first viral-load update of a scheduled starter is also deferred to the month after the start
+# month, so that both pathways share the same convention and the realised difference is k months.
+# Applied in the analytic period only, so that the burn-in and the calibrated 2023 state are unchanged.
+ART_START_VL_UPDATE_NEXT_MONTH = False
+
+def get_analytic_calendar_year(month):
+    """Calendar year of a continuous month index in the analytic period."""
+    return BURNIN_START_YEAR + BURN_IN_YEARS + (int(month) - BURN_IN_MONTHS - 1) // months_per_year
+
+def get_effective_scenario_config(label, month, is_burnin):
+    """Scenario configuration in force this month (applies policy_start_year)."""
+    cfg = SCENARIO_CONFIGS.get(label, {"delay_mean": 2.0, "delay_sd": 0.5,
+                                       "immediate": False, "apply_criteria": True})
+    start_year = cfg.get("policy_start_year")
+    if start_year is not None and (not is_burnin) and get_analytic_calendar_year(month) < int(start_year):
+        return POLICY_START_FALLBACK_CONFIG
+    return cfg
+
 def get_enabled_scenarios():
+    if ENABLED_SCENARIO_LABELS is not None:
+        return list(ENABLED_SCENARIO_LABELS)
     enabled = []
     if SCENARIO_0_ENABLED:
         enabled.append("0 month")
@@ -155,7 +188,7 @@ def get_enabled_scenarios():
     return enabled
 
 # =============================================================================
-
+# Event-specific random-number streams (common random numbers)
 # =============================================================================
 
 EVENT_RNG_NAMES = [
@@ -181,7 +214,7 @@ def create_event_rngs(base_seed: int):
     return {name: np.random.default_rng(s) for name, s in zip(EVENT_RNG_NAMES, child_ss)}
 
 # =============================================================================
-
+# Burn-in and population size
 # =============================================================================
 BURN_IN_YEARS = 20
 BURN_IN_MONTHS = BURN_IN_YEARS * months_per_year
@@ -193,33 +226,9 @@ NEWCOMER_RATE = 0.02
 TARGET_POPULATION = 2_100_000
 
 # =============================================================================
-
+# Initial HIV population and PrEP
 # =============================================================================
-
-#
-
-#
-
-#
-
-#
-
-#
-
-# =============================================================================
-
-# =============================================================================
-
-# =============================================================================
-
-# =============================================================================
-
-#
-
-#
-
-# =============================================================================
-initial_total_hiv = 16_500       # hiv_rapid_art_model: keep tune10 burn-in stock; widen post-burn-in scenario separation via main transmission force.
+initial_total_hiv = 16_500       # people with HIV in the initial population (start of the burn-in)
 initial_on_art = 7_500
 
 initial_prep_uptake_msm = 0.01
@@ -233,7 +242,7 @@ prep_growth_years_het = 10
 prep_effectiveness = 0.95
 
 # =============================================================================
-
+# PrEP discontinuation, ART eligibility, testing, transmission calibration, loss to follow-up and background mortality
 # =============================================================================
 
 prep_dropout_rate_msm = 0.005
@@ -243,13 +252,13 @@ USE_PRE_ART_CONDITION = True
 X = 10
 Y = 350.0
 
-# hiv_rapid_art_model: burn-in ART eligibility follows historical CD4 thresholds.
+# Burn-in ART eligibility follows historical CD4 thresholds.
 # These rules override the usual CD4/VL criterion during their active years.
 BURNIN_START_YEAR = 2004
 ART_CD4_WAIT_POLICY_ENABLED = True
 ART_CD4_WAIT_POLICY_START_YEAR = 2004
 ART_CD4_WAIT_POLICY_END_YEAR = 2013
-ART_CD4_WAIT_THRESHOLD = 350.0  # Backward-compatible default; see period table below.
+ART_CD4_WAIT_THRESHOLD = 350.0  # used when no period in the table below applies
 ART_CD4_WAIT_POLICY_PERIODS = (
     (2004, 2008, 350.0),
     (2009, 2013, 500.0),
@@ -286,8 +295,8 @@ BURNIN_TEST_CAPACITY_POLICY_ON = True
 BURNIN_TEST_CAPACITY_SOURCE = "2024_kensa.xlsx administrative tests + calibrated 2011-2014 diagnosis hump"
 BURNIN_TEST_CAPACITY_MULTIPLIER = 1.50
 BURNIN_TEST_CAPACITY_MONTHLY_BY_YEAR = {
-    # Tune7 keeps total testing near the administrative-test scale but moves the
-    # burn-in diagnosis peak toward the observed 2013 HIV+AIDS-reporting peak.
+    # Total testing is kept near the administrative-test scale, with the burn-in
+    # diagnosis peak placed near the observed 2013 peak in HIV and AIDS reports.
     2004: 14_500,
     2005: 15_000,
     2006: 15_500,
@@ -392,6 +401,11 @@ MORTALITY_RECALIB_FOI_SCALE = 1.05
 RECENT_FOI_BOOST = 1.04
 RECENT_FOI_BOOST_FROM_YEAR = 2016
 
+# Optional time-varying analytic-period multiplier: {calendar_year: multiplier}.
+# None (default) applies the constant MAIN_TRANSMISSION_MULTIPLIER in every
+# analytic year. Years missing from the dictionary fall back to the constant.
+ANALYTIC_FOI_MULTIPLIER_BY_YEAR = None
+
 def get_transmission_multiplier(month, is_burnin):
     """Calibration multiplier for infection force, keeping initial stock fixed."""
     if not TRANSMISSION_MULTIPLIER_POLICY_ON:
@@ -403,7 +417,11 @@ def get_transmission_multiplier(month, is_burnin):
         if burnin_year >= RECENT_FOI_BOOST_FROM_YEAR:
             m *= RECENT_FOI_BOOST
         return float(m)
-    return float(MAIN_TRANSMISSION_MULTIPLIER * MORTALITY_RECALIB_FOI_SCALE * RECENT_FOI_BOOST)
+    base = MAIN_TRANSMISSION_MULTIPLIER
+    if ANALYTIC_FOI_MULTIPLIER_BY_YEAR:
+        base = ANALYTIC_FOI_MULTIPLIER_BY_YEAR.get(get_analytic_calendar_year(month),
+                                                  MAIN_TRANSMISSION_MULTIPLIER)
+    return float(base * MORTALITY_RECALIB_FOI_SCALE * RECENT_FOI_BOOST)
 
 USE_CD4_VL_CRITERIA = True
 
@@ -437,13 +455,7 @@ female_mortality_rate = np.array([
 ], dtype=np.float64) / (1000.0 * 12.0)
 
 # =============================================================================
-
-# =============================================================================
-
-#
-
-#
-
+# HIV-related mortality
 # =============================================================================
 HIV_MORTALITY_MODEL = "multiplier"
 
@@ -721,6 +733,10 @@ HIV_MORTALITY_EXCESS_RATE_MULTIPLIER = 1.0
 HIV_MORTALITY_MULTIPLIER_SCALER = 1.0
 
 AGE_MORTALITY_OFFSET = 5.0
+# The offset is added to the age arrays at the Python call sites (process_single_month and the
+# mortality validation), not inside the Numba-compiled functions, so that a driver script can change
+# it at run time (Numba would otherwise freeze the module constant at first compilation).
+# Sensitivity analysis A12_age_offset (run_revision_scenarios.py) sets it to 0.0.
 
 def _validate_matrix(name, value, expected_shape=(4, 4), allow_none=False, strictly_positive=False):
     if value is None:
@@ -804,63 +820,33 @@ female_age_groups_upper = np.array([29, 39, 49, 59])
 female_age_groups_prob = np.array([0.4, 0.3, 0.2, 0.1])
 
 # =============================================================================
-
-# =============================================================================
-
-#
-
-#
-
-#
-
-#   hiv_rapid_art_model Phase 2:  p_infect_het_bins = [0, 1e-4, 2e-4, 4e-4, 1e-3]    (= base × 2.0)
-
-#   hiv_rapid_art_model Phase 3:  p_infect_het_bins = [0, 1.5e-4, 3e-4, 6e-4, 1.5e-3] (= base × 3.0)
-
+# Per-act infectivity by viral load
 # =============================================================================
 VL_BIN_EDGES = np.array([0.0, 2.3, 4.0, 5.0, 6.0, 10.0])
-p_infect_msm_bins = np.array([0, 0.001, 0.001, 0.002, 0.005])    # hiv_rapid_art_model: keep baseline per-act infectivity; apply a stronger main-only multiplier.
-p_infect_het_bins = np.array([0, 1.5e-4, 3.0e-4, 6.0e-4, 1.5e-3]) # hiv_rapid_art_model: keep baseline per-act infectivity while preserving route balance.
+p_infect_msm_bins = np.array([0, 0.001, 0.001, 0.002, 0.005])    # per-act infectivity by viral-load bin (MSM)
+p_infect_het_bins = np.array([0, 1.5e-4, 3.0e-4, 6.0e-4, 1.5e-3]) # per-act infectivity by viral-load bin (heterosexual)
 
 # =============================================================================
+# Contact rates
+# =============================================================================
+contact_rate_msm = 10.1   # incidence is calibrated through the transmission multiplier
+
+contact_rate_het = 7.0    # the route mix is calibrated through the heterosexual core layer below
 
 # =============================================================================
-
-#
-
-#
-
-#
-
-#   hiv_rapid_art_model/135/136: contact_rate_msm = 11.0, contact_rate_het = 3.0
-#   hiv_rapid_art_model Phase 2: contact_rate_msm = 10.0, contact_rate_het = 5.0
-
-# =============================================================================
-contact_rate_msm = 10.1   # hiv_rapid_art_model: keep tune5 contact level; incidence is adjusted by transmission multiplier.
-
-contact_rate_het = 7.0    # hiv_rapid_art_model: keep Phase 3 heterosexual contact level; route mix is handled by the bridge layer.
-
-# =============================================================================
-# hiv_rapid_art_model: Heterosexual core/high-activity layer
+# Heterosexual core/high-activity layer
 # =============================================================================
 # This represents Japan-relevant heterosexual high-activity/bridge
 # heterogeneity. It is a latent compartment for partner turnover, concurrency,
 # migration/foreign-nationality bridge features, and delayed testing access;
-# it is not a directly observed sex-worker population. For this recalibration,
-# heterosexual per-contact probabilities remain at the Phase 3 upper calibration.
-# The bridge layer is kept within the deep_research_v1 sensitivity range, but
-# expressed as a broader and less concentrated bridge group than hiv_rapid_art_model_b.
-# The first ACT=9 attempt made heterosexual transmission too weak (Hetero share
-# ~5-6%, burn-in incidence 638/year). The subsequent ACT=12 run improved
-# reporting calibration (burn-in diagnoses 957/year) but still underfit
-# infections (726/year) and heterosexual contribution (40-year Het share
-# 8.5-11.2% across ART-delay scenarios). ACT is therefore raised to 14 while
-# keeping SHARE=3% and FOREIGN=15%. This preserves the bridge framing while
-# moving Het toward the publication target of roughly 17-20%.
+# it is not a directly observed sex-worker population. The layer is a broad,
+# moderately concentrated bridge group; its size (3% of heterosexual people),
+# activity multiplier (14) and foreign-born share (15%) were set during calibration
+# so that the heterosexual share of new infections approaches roughly 17-20%.
 HETERO_CORE_SHARE = 0.03
-HETERO_CORE_ACTIVITY_MULTIPLIER = 14.0   # bridge concept: ACT=12 still underfit Het share and total incidence
-HETERO_CORE_INITIAL_HIV_WEIGHT = 12.0    # keep hiv_rapid_art_model_b conservative initial enrichment; do not re-concentrate HIV in the bridge layer
-HETERO_CORE_FOREIGN_SHARE = 0.15         # bridge concept: lower foreign/migrant bridge share within 12-15%
+HETERO_CORE_ACTIVITY_MULTIPLIER = 14.0   # relative activity of the core layer
+HETERO_CORE_INITIAL_HIV_WEIGHT = 12.0    # relative weight of the core layer in the initial HIV allocation
+HETERO_CORE_FOREIGN_SHARE = 0.15         # foreign-born share of the core layer
 
 TEST_CAPACITY_POLICY_ON = True
 TEST_CAPACITY_X = 14500
@@ -868,7 +854,7 @@ TEST_CAPACITY_Y = 18000
 TEST_CAPACITY_Z = 5
 
 # =============================================================================
-# hiv_rapid_art_model_c publication-calibration anchors from deep_research_v1.md
+# Calibration targets
 # =============================================================================
 # Primary baseline: 2023-2024. Sensitivity baseline: 2022-2024.
 # These are reporting/cascade anchors, not all direct infection-incidence targets.
@@ -890,7 +876,7 @@ TARGET_PLHIV_SOFT_LOW = 33_000
 TARGET_PLHIV_SOFT_HIGH = 36_000
 
 # =============================================================================
-
+# Mortality functions
 # =============================================================================
 
 @njit
@@ -908,7 +894,7 @@ def get_mortality_rate_by_age(adj_age, gender, upper_male, rate_male, upper_fema
 
 @njit
 def calc_mortality_risk_single(cd4, age, is_aids, gender, upper_male, rate_male, upper_female, rate_female):
-    adj_age = age + AGE_MORTALITY_OFFSET
+    adj_age = age   # age already includes AGE_MORTALITY_OFFSET (added by the caller)
     mr = get_mortality_rate_by_age(adj_age, gender, upper_male, rate_male, upper_female, rate_female)
     if is_aids:
         mr *= 4
@@ -934,13 +920,13 @@ def calc_mortality_risk_uninfected_batch(age_arr, gender_arr,
     n = len(age_arr)
     result = np.empty(n, dtype=np.float64)
     for i in prange(n):
-        adj_age = age_arr[i] + AGE_MORTALITY_OFFSET
+        adj_age = age_arr[i]   # age already includes AGE_MORTALITY_OFFSET (added by the caller)
         result[i] = get_mortality_rate_by_age(adj_age, gender_arr[i],
                                                upper_male, rate_male, upper_female, rate_female)
     return result
 
 # =============================================================================
-
+# HIV-related mortality, viral load and CD4 functions
 # =============================================================================
 @njit
 def get_cd4_mortality_stratum_index(cd4):
@@ -980,7 +966,7 @@ def calc_mortality_risk_single_v143(cd4, age, is_aids, gender,
                                     upper_male, rate_male, upper_female, rate_female,
                                     mode_code, excess_annual, mortality_multipliers,
                                     excess_rate_multiplier, multiplier_scaler):
-    adj_age = age + AGE_MORTALITY_OFFSET
+    adj_age = age   # age already includes AGE_MORTALITY_OFFSET (added by the caller)
     background_p = get_mortality_rate_by_age(adj_age, gender, upper_male, rate_male,
                                              upper_female, rate_female)
 
@@ -1190,7 +1176,7 @@ def update_cd4_tracking(cd4, prev_cd4,
             t_sustained_500[i] = month
 
 # =============================================================================
-
+# Age, viral-load, waiting-time and CD4 helper functions
 # =============================================================================
 
 def calc_age_exit_probability_vectorized(ages):
@@ -1237,15 +1223,69 @@ def assign_viral_load_vectorized(cd4_arr, rng):
     result[mask_low] = rng.uniform(5.5, 6.5, size=mask_low.sum())
     return result
 
+# Time from ART initiation to viral suppression (months):
+#   TTS_MIN_MONTHS + TTS_RANGE_MONTHS * Beta(2, 5); base case 1 + 5 * Beta(2, 5)
+#   (range 1 to 6 months, median about 2.3 months). Sensitivity analyses change
+#   TTS_RANGE_MONTHS only, so the Beta draw itself is unchanged.
+TTS_MIN_MONTHS = 1.0
+TTS_RANGE_MONTHS = 5.0
+
 def generate_time_to_suppression_skewed(n, rng):
     alpha, beta = 2.0, 5.0
     vals = rng.beta(alpha, beta, size=n)
-    return 1.0 + 5.0 * vals
+    return TTS_MIN_MONTHS + TTS_RANGE_MONTHS * vals
 
 def gamma_delay(mean, sd, size, rng):
     alpha = (mean**2) / (sd**2)
     theta = (sd**2) / mean
     return rng.gamma(shape=alpha, scale=theta, size=size)
+
+def _apply_ineligible_fallback(cfg, pop, month, rng, candidate_mask, eligible_mask):
+    """Optional fallback for people who do not meet the certification criteria.
+
+    cfg["ineligible_fallback"] = {"delay_mean", "delay_sd"} (months): a diagnosed,
+    untreated person who is not eligible is given a fallback start time drawn once
+    (gamma) at the first evaluation; if still untreated when it falls due, ART is
+    scheduled for the current month irrespective of the criteria (representing
+    certification through non-laboratory criteria, self-payment or other routes,
+    as observed in the multicentre cohort). Returns the boolean mask of people
+    scheduled this month. No random numbers are drawn unless the option is set.
+    """
+    fb = cfg.get("ineligible_fallback") if isinstance(cfg, dict) else None
+    if not fb:
+        return None
+    due = candidate_mask & (pop['art_fallback_start'] > 0) & (pop['art_fallback_start'] <= month)
+    if np.any(due):
+        pop['art_start'][due] = float(month)
+        first = due & (pop['t_art_start_actual'] < 0)
+        pop['t_art_eligible'][first] = float(month)
+    need = candidate_mask & (~eligible_mask) & (~due) & (pop['art_fallback_start'] < 0)
+    idx = np.where(need)[0]
+    if len(idx) > 0:
+        pop['art_fallback_start'][idx] = month + gamma_delay(float(fb["delay_mean"]), float(fb["delay_sd"]), len(idx), rng)
+    return due
+
+
+def _draw_eligibility_delays(cfg, pop, idx, rng, delay_mean, delay_sd):
+    """Eligibility-to-ART delays (months) for the eligible individuals idx.
+
+    Optional cfg["fast_track"] = {"delay_mean", "delay_sd", "share", "cd4_below"}
+    assigns a shorter delay to a share of individuals whose CD4 count is below
+    cd4_below (the AIDS exemption from the two-test rule, used in the empirical
+    status-quo comparator). Fast-track draws are made after the standard draw,
+    so the default random-number stream is unchanged when fast_track is absent.
+    """
+    delays = gamma_delay(delay_mean, delay_sd, len(idx), rng)
+    ft = cfg.get("fast_track") if isinstance(cfg, dict) else None
+    if ft:
+        cand = np.where(pop['cd4'][idx] < float(ft.get("cd4_below", 200.0)))[0]
+        if len(cand) > 0:
+            share = float(ft.get("share", 1.0))
+            if share < 1.0:
+                cand = cand[rng.random(len(cand)) < share]
+            if len(cand) > 0:
+                delays[cand] = gamma_delay(float(ft["delay_mean"]), float(ft["delay_sd"]), len(cand), rng)
+    return delays
 
 def assign_cd4_ceiling_from_nadir_vectorized(nadir_cd4, rng):
     n = len(nadir_cd4)
@@ -1354,7 +1394,7 @@ def get_cd4_category_vectorized(cd4, hiv_positive):
     return result
 
 # =============================================================================
-
+# Aggregation by age group and CD4 category
 # =============================================================================
 
 AGE_GROUP_LABELS = ["20-29", "30-39", "40-49", "50-59", "60-69", "70+"]
@@ -1418,7 +1458,7 @@ def aggregate_counts_vectorized(keys, max_key):
     return np.bincount(keys, minlength=max_key + 1)
 
 # =============================================================================
-
+# Population initialisation
 # =============================================================================
 
 def create_population_arrays(n):
@@ -1452,6 +1492,7 @@ def create_population_arrays(n):
         'vl_suppressed': np.zeros(n, dtype=np.bool_),
         'dropped_out': np.zeros(n, dtype=np.bool_),
         'time_to_suppression': -np.ones(n, dtype=np.float64),
+        'art_fallback_start': -np.ones(n, dtype=np.float64),   # month at which an ineligible person starts ART regardless of criteria (optional)
         'time_of_infection': -np.ones(n, dtype=np.float64),
         'time_of_diagnosis': -np.ones(n, dtype=np.float64),
         'alive': np.ones(n, dtype=np.bool_),
@@ -1671,10 +1712,9 @@ def initialize_hiv(pop, rng):
         pop['cd4'][cat_indices] = rng.uniform(cat_range[0], cat_range[1], size=n_cat)
     
     # =======================================================================
-
+    # Care status of the initial HIV population
     # =======================================================================
 
-    
     undiagnosed_ratio = 0.40
     art_scheduled_ratio = 0.30
     normal_flow_ratio = 0.25
@@ -1796,8 +1836,6 @@ def generate_foreigners(n_msm, n_het_m, n_het_f, year_idx, current_month, rng):
     pop['time_of_infection'][:] = current_month
     
     # ----------------------------------------------------------------
-
-    # ----------------------------------------------------------------
     n_male = n_msm + n_het_m
     pop['gender'][:n_male] = 0
     pop['gender'][n_male:] = 1
@@ -1813,8 +1851,6 @@ def generate_foreigners(n_msm, n_het_m, n_het_f, year_idx, current_month, rng):
             pop, np.arange(n_msm, n), rng, core_share=HETERO_CORE_FOREIGN_SHARE
         )
     
-    # ----------------------------------------------------------------
-
     # ----------------------------------------------------------------
     if n_male > 0:
         male_probs = get_age_distribution_by_year(year_idx, "male")
@@ -1842,7 +1878,7 @@ def append_population(pop, new_pop):
     return pop
 
 # =============================================================================
-
+# Transmission
 # =============================================================================
 
 # Transmission-source attribution (model-based decomposition of the monthly
@@ -1854,6 +1890,20 @@ TRANSMISSION_SOURCE_CATEGORIES = (
     "on_art_unsuppressed",    # source & on_art & ~dropped_out
     "disengaged",             # source & dropped_out
 )
+
+# Relative infectivity of diagnosed, virally unsuppressed sources (pre-ART,
+# on ART but unsuppressed, or disengaged) compared with undiagnosed sources at
+# the same viral load. 1.0 (default) assumes no behaviour change after diagnosis;
+# values below 1 represent reduced transmission behaviour among people aware of
+# their HIV status (sensitivity analysis).
+DIAGNOSED_UNSUPPRESSED_INFECTIVITY_FACTOR = 1.0
+
+def _apply_diagnosed_infectivity_factor(p_arr, pop, src_idx):
+    """Scale per-source transmission probabilities for diagnosed sources."""
+    if DIAGNOSED_UNSUPPRESSED_INFECTIVITY_FACTOR == 1.0 or len(src_idx) == 0:
+        return p_arr
+    return np.where(pop['diagnosed'][src_idx],
+                    p_arr * DIAGNOSED_UNSUPPRESSED_INFECTIVITY_FACTOR, p_arr)
 
 def _attribute_sources(pop, src_idx, weights, n_inf):
     """Allocate realised infections n_inf across source states in proportion to
@@ -1915,7 +1965,7 @@ def process_transmissions_in_month(pop, month, label, rng, is_burnin=False):
         return new_infected, None
 
     # =================================================================
-
+    # Force of infection
     # =================================================================
     if S_msm > 0:
         n_prep_msm = np.sum(pop['on_prep'][msm_sus_indices])
@@ -1940,7 +1990,8 @@ def process_transmissions_in_month(pop, month, label, rng, is_burnin=False):
     transmission_multiplier = get_transmission_multiplier(month, is_burnin)
     if I_msm > 0 and S_msm > 0:
         vl_bins_msm = get_vl_bin_indices_vectorized(pop['vl'][msm_source_indices])
-        p_infect_msm = p_infect_msm_bins[vl_bins_msm]
+        p_infect_msm = _apply_diagnosed_infectivity_factor(
+            p_infect_msm_bins[vl_bins_msm], pop, msm_source_indices)
         total_force_msm = np.sum(contact_rate_msm * p_infect_msm) * transmission_multiplier
         lambda_msm = total_force_msm / max(S_msm, 1)
     else:
@@ -1948,7 +1999,8 @@ def process_transmissions_in_month(pop, month, label, rng, is_burnin=False):
 
     if I_het > 0 and S_het > 0:
         vl_bins_het = get_vl_bin_indices_vectorized(pop['vl'][het_source_indices])
-        p_infect_het = p_infect_het_bins[vl_bins_het]
+        p_infect_het = _apply_diagnosed_infectivity_factor(
+            p_infect_het_bins[vl_bins_het], pop, het_source_indices)
         het_source_activity = pop['activity_multiplier'][het_source_indices]
         total_force_het = np.sum(contact_rate_het * het_source_activity * p_infect_het) * transmission_multiplier
         lambda_het = total_force_het / max(S_activity_het, 1.0)
@@ -1989,13 +2041,17 @@ def process_transmissions_in_month(pop, month, label, rng, is_burnin=False):
     if not is_burnin:
         if I_msm > 0:
             w_msm = (contact_rate_msm
-                     * p_infect_msm_bins[get_vl_bin_indices_vectorized(pop['vl'][msm_source_indices])])
+                     * _apply_diagnosed_infectivity_factor(
+                         p_infect_msm_bins[get_vl_bin_indices_vectorized(pop['vl'][msm_source_indices])],
+                         pop, msm_source_indices))
         else:
             w_msm = np.zeros(0, dtype=np.float64)
         if I_het > 0:
             w_het = (contact_rate_het
                      * pop['activity_multiplier'][het_source_indices]
-                     * p_infect_het_bins[get_vl_bin_indices_vectorized(pop['vl'][het_source_indices])])
+                     * _apply_diagnosed_infectivity_factor(
+                         p_infect_het_bins[get_vl_bin_indices_vectorized(pop['vl'][het_source_indices])],
+                         pop, het_source_indices))
         else:
             w_het = np.zeros(0, dtype=np.float64)
         source_attr = {
@@ -2007,7 +2063,7 @@ def process_transmissions_in_month(pop, month, label, rng, is_burnin=False):
     return new_infected, source_attr
 
 # =============================================================================
-
+# Monthly cycle
 # =============================================================================
 
 def process_single_month(pop, month, label, rngs, 
@@ -2038,8 +2094,6 @@ def process_single_month(pop, month, label, rngs,
     }
 
     # -----------------------------------------------------------------
-
-    # -----------------------------------------------------------------
     if isinstance(rngs, np.random.Generator):
 
         rngs = {name: rngs for name in EVENT_RNG_NAMES}
@@ -2051,7 +2105,7 @@ def process_single_month(pop, month, label, rngs,
     rng = rngs["init"]
     
     # =================================================================
-
+    # PrEP uptake and discontinuation
     # =================================================================
     if not is_burnin:
         rng = rngs["prep"]
@@ -2111,7 +2165,7 @@ def process_single_month(pop, month, label, rngs,
                     pop['on_prep'][off_prep_het_indices[new_prep_het]] = True
     
     # =================================================================
-
+    # Exit from the modelled population by age
     # =================================================================
     rng = rngs["risk_exit"]
     alive_indices = np.where(pop['alive'])[0]
@@ -2120,10 +2174,13 @@ def process_single_month(pop, month, label, rngs,
     pop['alive'][alive_indices[exits]] = False
     
     # =================================================================
-
+    # Scheduled ART starts
     # =================================================================
     rng = rngs["art_delay"]
-    if label == "0 month":
+    scen_cfg = get_effective_scenario_config(label, month, is_burnin)
+    scen_immediate = bool(scen_cfg.get("immediate", label == "0 month"))
+    scen_apply_criteria = bool(scen_cfg.get("apply_criteria", USE_CD4_VL_CRITERIA))
+    if scen_immediate:
         mask_art = (
             pop['diagnosed'] &
             (~pop['on_art']) &
@@ -2131,8 +2188,15 @@ def process_single_month(pop, month, label, rngs,
             (pop['art_start'] < 0) &
             pop['alive']
         )
+        candidate_mask = mask_art.copy()
         if is_art_cd4_wait_policy_active(month, is_burnin):
             mask_art &= meets_art_cd4_wait_threshold(pop['cd4'], month, is_burnin)
+        elif scen_apply_criteria:
+            mask_art &= (pop['cd4'] < 500.0) | (pop['vl'] >= VL_THRESHOLD_LOG10_5000)
+        if (not is_burnin) and scen_apply_criteria:
+            due = _apply_ineligible_fallback(scen_cfg, pop, month, rng, candidate_mask, mask_art)
+            if due is not None:
+                mask_art |= due
         pop['art_start'][mask_art] = month
 
         first_start_mask = mask_art & (pop['t_art_start_actual'] < 0)
@@ -2148,15 +2212,20 @@ def process_single_month(pop, month, label, rngs,
             pop['alive']
         )
         
+        candidate_mask = base_mask.copy()
         if is_art_cd4_wait_policy_active(month, is_burnin):
             base_mask &= meets_art_cd4_wait_threshold(pop['cd4'], month, is_burnin)
-        elif USE_CD4_VL_CRITERIA:
+        elif scen_apply_criteria:
             base_mask &= (pop['cd4'] < 500.0) | (pop['vl'] >= vl_threshold_log)
         
+        if not is_burnin:
+            due = _apply_ineligible_fallback(scen_cfg, pop, month, rng, candidate_mask, base_mask)
+            if due is not None:
+                base_mask &= ~due
         eligible_indices = np.where(base_mask)[0]
         if len(eligible_indices) > 0:
 
-            cfg = SCENARIO_CONFIGS.get(label, {"delay_mean": 2.0, "delay_sd": 0.5})
+            cfg = scen_cfg
             delay_mean = float(cfg.get("delay_mean", 2.0))
             delay_sd = float(cfg.get("delay_sd", 0.5))
             if delay_mean_override is not None:
@@ -2167,7 +2236,7 @@ def process_single_month(pop, month, label, rngs,
             first_start_idx = eligible_indices[pop['t_art_start_actual'][eligible_indices] < 0]
             pop['t_art_eligible'][first_start_idx] = float(month)
 
-            delays = gamma_delay(delay_mean, delay_sd, len(eligible_indices), rng)
+            delays = _draw_eligibility_delays(cfg, pop, eligible_indices, rng, delay_mean, delay_sd)
             pop['art_start'][eligible_indices] = month + delays
 
     art_ready_mask = (
@@ -2195,6 +2264,11 @@ def process_single_month(pop, month, label, rngs,
         rng = rngs["art_start"]
         pop['on_art'][art_ready_indices] = True
         pop['cd4_at_art_start'][art_ready_indices] = pop['cd4'][art_ready_indices]
+        if ART_START_VL_UPDATE_NEXT_MONTH and not is_burnin:
+            # analytic period only (the burn-in and hence the calibrated 2023 state are unchanged):
+            # defer the first viral-load update to the next cycle; time_since_art becomes 0 at this
+            # cycle's update (no change in viral load) and 1 at the next (first reduction)
+            pop['time_since_art'][art_ready_indices] = -1.0
 
         first_start = art_ready_indices[pop['t_art_start_actual'][art_ready_indices] < 0]
         pop['t_art_start_actual'][first_start] = float(month)
@@ -2213,7 +2287,7 @@ def process_single_month(pop, month, label, rngs,
         )
     
     # =================================================================
-
+    # Loss to follow-up before and on ART
     # =================================================================
     rng = rngs["dropout"]
 
@@ -2224,6 +2298,7 @@ def process_single_month(pop, month, label, rngs,
         drop_idx = pre_art_indices[dropouts]
         pop['dropped_out'][drop_idx] = True
         pop['art_start'][drop_idx] = -1
+        pop['art_fallback_start'][drop_idx] = -1.0
 
         never_started = drop_idx[pop['t_art_start_actual'][drop_idx] < 0]
         pop['t_art_eligible'][never_started] = -1.0
@@ -2245,7 +2320,7 @@ def process_single_month(pop, month, label, rngs,
         pop['art_start'][drop_idx2] = -1
     
     # =================================================================
-
+    # Viral load and CD4 count on ART
     # =================================================================
     mask_on_art_active = pop['on_art'] & (~pop['dropped_out']) & pop['alive']
     art_active_indices = np.where(mask_on_art_active)[0]
@@ -2282,7 +2357,7 @@ def process_single_month(pop, month, label, rngs,
         pop['cd4'][art_active_indices] = new_cd4
     
     # =================================================================
-
+    # CD4 decline without ART
     # =================================================================
     mask_not_on_art = pop['hiv_positive'] & (~pop['on_art']) & pop['alive']
     not_on_art_indices = np.where(mask_not_on_art)[0]
@@ -2296,7 +2371,7 @@ def process_single_month(pop, month, label, rngs,
     pop['is_aids'] = pop['cd4'] < 200.0
     
     # =================================================================
-
+    # CD4 nadir and threshold tracking
     # =================================================================
     pop['cd4_nadir'] = np.minimum(pop['cd4_nadir'], pop['cd4'])
     
@@ -2309,7 +2384,7 @@ def process_single_month(pop, month, label, rngs,
     )
     
     # =================================================================
-
+    # Re-engagement after loss to follow-up
     # =================================================================
     mask_dropout = pop['dropped_out'] & pop['alive']
     pop['time_since_dropout'][mask_dropout] += 1.0
@@ -2351,22 +2426,18 @@ def process_single_month(pop, month, label, rngs,
             pop['time_to_suppression'][eligible] = -1
     
     # =================================================================
-
+    # HIV testing
     # =================================================================
     rng = rngs["testing"]
     alive_indices = np.where(pop['alive'])[0]
     testing_rate_multiplier = min(1.0 + 0.02 * year_idx, 2.0)
     
     # -----------------------------------------------------------------
-
-    # -----------------------------------------------------------------
     prep_user_mask = pop['on_prep'] & pop['alive'] & (~pop['diagnosed'])
     prep_test_prob = 4.0 / 12.0
     prep_test_mask = (rng.random(len(pop['alive'])) < prep_test_prob) & prep_user_mask
     prep_test_indices = np.where(prep_test_mask)[0]
     
-    # -----------------------------------------------------------------
-
     # -----------------------------------------------------------------
 
     test_probs = np.zeros(len(pop['alive']), dtype=np.float64)
@@ -2426,8 +2497,6 @@ def process_single_month(pop, month, label, rngs,
                 regular_test_indices = np.concatenate([regular_test_indices, additional])
     
     # -----------------------------------------------------------------
-
-    # -----------------------------------------------------------------
     test_indices = np.unique(np.concatenate([prep_test_indices, regular_test_indices]))
 
     results['tests'] = len(test_indices)
@@ -2442,7 +2511,7 @@ def process_single_month(pop, month, label, rngs,
     pop['time_of_diagnosis'][new_diag_indices] = month
 
     # ================================================================
-
+    # Diagnosis records
     # ================================================================
     if not is_burnin:
         sim_month_idx = month - BURN_IN_MONTHS
@@ -2458,10 +2527,13 @@ def process_single_month(pop, month, label, rngs,
     pop['on_prep'][new_diag_indices] = False
 
     # =================================================================
-
+    # ART scheduling at diagnosis
     # =================================================================
     if len(new_diag_indices) > 0:
-        if label == "0 month":
+        scen_cfg = get_effective_scenario_config(label, month, is_burnin)
+        scen_immediate = bool(scen_cfg.get("immediate", label == "0 month"))
+        scen_apply_criteria = bool(scen_cfg.get("apply_criteria", USE_CD4_VL_CRITERIA))
+        if scen_immediate:
 
             immediate_art_mask = (
                 (~pop['on_art'][new_diag_indices]) &
@@ -2473,6 +2545,19 @@ def process_single_month(pop, month, label, rngs,
                 immediate_art_mask &= meets_art_cd4_wait_threshold(
                     pop['cd4'][new_diag_indices], month, is_burnin
                 )
+            elif scen_apply_criteria:
+                immediate_art_mask &= (
+                    (pop['cd4'][new_diag_indices] < 500.0)
+                    | (pop['vl'][new_diag_indices] >= VL_THRESHOLD_LOG10_5000)
+                )
+                if (not is_burnin) and scen_cfg.get("ineligible_fallback"):
+                    fb = scen_cfg["ineligible_fallback"]
+                    inel = new_diag_indices[~immediate_art_mask]
+                    inel = inel[(~pop['on_art'][inel]) & (~pop['dropped_out'][inel]) & pop['alive'][inel]
+                                & (pop['art_fallback_start'][inel] < 0)]
+                    if len(inel) > 0:
+                        pop['art_fallback_start'][inel] = month + gamma_delay(
+                            float(fb["delay_mean"]), float(fb["delay_sd"]), len(inel), rngs["art_delay"])
             immediate_art_idx = new_diag_indices[immediate_art_mask]
             if len(immediate_art_idx) > 0:
                 rng = rngs["art_start"]
@@ -2512,14 +2597,22 @@ def process_single_month(pop, month, label, rngs,
                 base_mask &= meets_art_cd4_wait_threshold(
                     pop['cd4'][new_diag_indices], month, is_burnin
                 )
-            elif USE_CD4_VL_CRITERIA:
+            elif scen_apply_criteria:
                 base_mask &= (pop['cd4'][new_diag_indices] < 500.0) | (pop['vl'][new_diag_indices] >= vl_threshold_log)
             
+            if (not is_burnin) and scen_cfg.get("ineligible_fallback"):
+                fb = scen_cfg["ineligible_fallback"]
+                inel = new_diag_indices[~base_mask]
+                inel = inel[(~pop['on_art'][inel]) & (~pop['dropped_out'][inel]) & pop['alive'][inel]
+                            & (pop['art_fallback_start'][inel] < 0)]
+                if len(inel) > 0:
+                    pop['art_fallback_start'][inel] = month + gamma_delay(
+                        float(fb["delay_mean"]), float(fb["delay_sd"]), len(inel), rngs["art_delay"])
             eligible_new_diag = new_diag_indices[base_mask]
             if len(eligible_new_diag) > 0:
                 rng = rngs["art_delay"]
 
-                cfg = SCENARIO_CONFIGS.get(label, {"delay_mean": 2.0, "delay_sd": 0.5})
+                cfg = scen_cfg
                 delay_mean = float(cfg.get("delay_mean", 2.0))
                 delay_sd = float(cfg.get("delay_sd", 0.5))
                 if delay_mean_override is not None:
@@ -2530,11 +2623,11 @@ def process_single_month(pop, month, label, rngs,
                 first_start_idx = eligible_new_diag[pop['t_art_start_actual'][eligible_new_diag] < 0]
                 pop['t_art_eligible'][first_start_idx] = float(month)
                 
-                delays = gamma_delay(delay_mean, delay_sd, len(eligible_new_diag), rng)
+                delays = _draw_eligibility_delays(cfg, pop, eligible_new_diag, rng, delay_mean, delay_sd)
                 pop['art_start'][eligible_new_diag] = month + delays
 
     # =================================================================
-
+    # New infections
     # =================================================================
     new_infected, _src_attr = process_transmissions_in_month(
         pop, month, label, rngs["infection"], is_burnin=is_burnin
@@ -2549,7 +2642,7 @@ def process_single_month(pop, month, label, rngs,
         pop['time_of_infection'][newly_infected_indices] = month
 
         # ================================================================
-
+        # Infection records
         # ================================================================
         if not is_burnin:
             sim_month_idx = month - BURN_IN_MONTHS
@@ -2584,7 +2677,7 @@ def process_single_month(pop, month, label, rngs,
     results['newly_infected_indices'] = newly_infected_indices
     
     # =================================================================
-
+    # Deaths
     # =================================================================
     rng = rngs["death"]
 
@@ -2595,7 +2688,7 @@ def process_single_month(pop, month, label, rngs,
 
         mr_hiv = calc_mortality_risk_batch_v143(
             pop['cd4'][hiv_alive_indices],
-            pop['age'][hiv_alive_indices],
+            pop['age'][hiv_alive_indices] + AGE_MORTALITY_OFFSET,
             pop['is_aids'][hiv_alive_indices],
             pop['gender'][hiv_alive_indices],
             pop['on_art'][hiv_alive_indices],
@@ -2641,7 +2734,7 @@ def process_single_month(pop, month, label, rngs,
     
     if len(uninf_alive_indices) > 0:
         mr_uninf = calc_mortality_risk_uninfected_batch(
-            pop['age'][uninf_alive_indices],
+            pop['age'][uninf_alive_indices] + AGE_MORTALITY_OFFSET,
             pop['gender'][uninf_alive_indices],
             male_age_upper, male_mortality_rate,
             female_age_upper, female_mortality_rate
@@ -2652,7 +2745,7 @@ def process_single_month(pop, month, label, rngs,
         results['deaths'] += len(dead_uninf_indices)
     
     # =================================================================
-
+    # Inflow of people with HIV from abroad
     # =================================================================
     rng = rngs["newcomer"]
     if is_burnin:
@@ -2676,7 +2769,7 @@ def process_single_month(pop, month, label, rngs,
         pop = append_population(pop, foreigners_pop)
 
     # =================================================================
-
+    # Population renewal (new entrants)
     # =================================================================
 
     current_alive = np.sum(pop['alive'])
@@ -2696,12 +2789,12 @@ def process_single_month(pop, month, label, rngs,
         pop = append_population(pop, newcomers_pop)
 
     # =================================================================
-
+    # Ageing
     # =================================================================
     pop['age'] += 1.0 / 12.0
 
     # =================================================================
-
+    # QALY accrual (analytic period)
     # =================================================================
     if not is_burnin:
         sim_month_idx = month - BURN_IN_MONTHS
@@ -2759,7 +2852,7 @@ def process_single_month(pop, month, label, rngs,
                 pop['discounted_qaly_post_diagnosis'][alive_hiv_diag] += util_d * (1.0 / 12.0) * df
 
     # =================================================================
-
+    # Undiagnosed infections among PrEP users
     # =================================================================
     results['breakthrough_undiagnosed'] = np.sum(
         pop['hiv_positive'] & pop['on_prep'] & (~pop['diagnosed']) & pop['alive']
@@ -2768,7 +2861,7 @@ def process_single_month(pop, month, label, rngs,
     return pop, results
 
 # =============================================================================
-
+# Burn-in
 # =============================================================================
 
 def run_burnin(seed=None):
@@ -2863,7 +2956,7 @@ def copy_population(pop):
     return {key: arr.copy() for key, arr in pop.items()}
 
 # =============================================================================
-
+# Analytic-period simulation
 # =============================================================================
 
 def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params=None):
@@ -2876,8 +2969,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     rng = rngs["init"]
     rng_prep = rngs["prep"]
     
-    # =========================================================================
-
     # =========================================================================
     def get_param(name, default_global):
         if scenario_params is not None and name in scenario_params:
@@ -2898,8 +2989,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     _TEST_CAPACITY_Y = get_param('TEST_CAPACITY_Y', TEST_CAPACITY_Y)
     _TEST_CAPACITY_Z = get_param('TEST_CAPACITY_Z', TEST_CAPACITY_Z)
     
-    # =========================================================================
-
     # =========================================================================
     _globals_backup = None
     if scenario_params is not None:
@@ -2981,8 +3070,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     
     # =========================================================================
 
-    # =========================================================================
-
     pop['t_first_ge200'][:] = -1
     pop['t_first_ge350'][:] = -1
     pop['t_first_ge500'][:] = -1
@@ -2993,8 +3080,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     pop['t_sustained_ge350'][:] = -1
     pop['t_sustained_ge500'][:] = -1
     
-    # =========================================================================
-
     # =========================================================================
 
     # MSM
@@ -3017,8 +3102,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
             pop['on_prep'][initial_prep_het_indices] = True
             print(f"  [PrEP init] Hetero: {n_initial_prep_het:,} ({initial_prep_uptake_het*100:.1f}%) set on PrEP")
     
-    # =========================================================================
-
     # =========================================================================
 
     yearly_infections = []
@@ -3051,8 +3134,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     monthly_breakthrough_undiagnosed = np.zeros(simulation_months + 1, dtype=np.int32)
 
     # =========================================================================
-
-    # =========================================================================
     monthly_new_infections_msm = np.zeros(simulation_months + 1, dtype=np.int32)
     monthly_new_infections_het = np.zeros(simulation_months + 1, dtype=np.int32)
     monthly_new_deaths_msm = np.zeros(simulation_months + 1, dtype=np.int32)
@@ -3073,8 +3154,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     year_new_deaths_het = 0
     year_art_starts_msm = 0
     year_art_starts_het = 0
-
-    # =========================================================================
 
     # =========================================================================
     monthly_foreign_inflow_msm   = np.zeros(simulation_months + 1, dtype=np.int32)
@@ -3200,8 +3279,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
                                       + month_results.get('foreign_inflow_het_f', 0))
 
         # ---------------------------------------------------------------
-
-        # ---------------------------------------------------------------
         if ENABLE_HETEROGENEITY_TRACKING:
 
             if len(newly_infected_indices) > 0:
@@ -3230,8 +3307,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
                 year_art_starts_msm += _a_msm
                 year_art_starts_het += _a_het
         
-        # ---------------------------------------------------------------
-
         # ---------------------------------------------------------------
         _f_msm   = int(month_results.get('foreign_inflow_msm', 0))
         _f_het_m = int(month_results.get('foreign_inflow_het_m', 0))
@@ -3443,8 +3518,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     aggregator_df.to_csv(os.path.join(OUTPUT_DIR, f"{scenario_label}_yearly_summary.csv"), index=False)
 
     # -------------------------------------------------------------------------
-
-    # -------------------------------------------------------------------------
     _cats = TRANSMISSION_SOURCE_CATEGORIES
     _src_rows = []
     for _y in range(years):
@@ -3496,8 +3569,6 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     export_incident_cohort_outputs(pop, OUTPUT_DIR, scenario_label)
     
     # =========================================================================
-
-    # =========================================================================
     if _globals_backup is not None:
         import sys
         current_module = sys.modules[__name__]
@@ -3507,14 +3578,12 @@ def run_simulation(label="0 month", initial_pop=None, seed=None, scenario_params
     return results, pop
 
 # =============================================================================
-
+# Incident-cohort outputs
 # =============================================================================
 def export_incident_cohort_outputs(pop, output_dir, scenario_short):
     from pathlib import Path
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    # ------------------------------
 
     # ------------------------------
     inf_year = pop.get('infection_year', None)
@@ -3546,8 +3615,6 @@ def export_incident_cohort_outputs(pop, output_dir, scenario_short):
     g_inf.to_csv(out_dir / f"{scenario_short}_incident_infection_cohort_summary.csv", index=False)
 
     # ------------------------------
-
-    # ------------------------------
     diag_year = pop.get('diagnosis_year', None)
     if diag_year is None:
         return
@@ -3577,7 +3644,7 @@ def export_incident_cohort_outputs(pop, output_dir, scenario_short):
     g_diag.to_csv(out_dir / f"{scenario_short}_incident_diagnosis_cohort_summary.csv", index=False)
 
 # =============================================================================
-
+# CD4 threshold outputs
 # =============================================================================
 
 def export_cd4_threshold_outputs(pop, output_dir, sim_months):
@@ -3671,7 +3738,7 @@ def export_cd4_threshold_outputs(pop, output_dir, sim_months):
         pd.DataFrame([summary]).to_csv(out_dir / "cd4_threshold_summary.csv", index=False)
 
 # =============================================================================
-
+# Consistency checks and output files
 # =============================================================================
 
 def _run_heterogeneity_consistency_checks(all_results, enabled_scenarios, years):
@@ -3951,8 +4018,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
         plt.close(fig)
     
     # =========================================================================
-
-    # =========================================================================
     # yearly_new_infections.csv
     df_data = {"Year": years_arr}
     for s in enabled_scenarios:
@@ -4077,8 +4142,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     pd.DataFrame(df_data).to_csv(os.path.join(OUTPUT_DIR, "yearly_transmission_probabilities.csv"), index=False)
     
     # =========================================================================
-
-    # =========================================================================
     if ENABLE_HETEROGENEITY_TRACKING:
 
         het_wide = {"Year": years_arr}
@@ -4114,8 +4177,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
 
         _run_heterogeneity_consistency_checks(all_results, enabled_scenarios, years)
     
-    # =========================================================================
-
     # =========================================================================
     inflow_wide = {"Year": years_arr}
     for s in enabled_scenarios:
@@ -4153,8 +4214,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
         os.path.join(OUTPUT_DIR, "foreign_inflow_summary.csv"), index=False
     )
     
-    # =========================================================================
-
     # =========================================================================
 
     yearly_new_art_starts_total = {}
@@ -4279,8 +4338,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     save_figure(fig5, "yearly_cumulative_infected.jpg")
     
     # -------------------------------------------------------------------------
-
-    # -------------------------------------------------------------------------
     fig6, ax = plt.subplots()
     for s in enabled_scenarios:
         monthly_total = (np.array(all_results[s]["monthly_art_start_over200"][1:simulation_months+1]) +
@@ -4292,8 +4349,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     ax.legend()
     save_figure(fig6, "monthly_art_starts.jpg")
     
-    # -------------------------------------------------------------------------
-
     # -------------------------------------------------------------------------
     fig7, ax = plt.subplots()
     for s in enabled_scenarios:
@@ -4360,8 +4415,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     ax.legend()
     save_figure(fig11, "yearly_tests_by_population.jpg")
     
-    # -------------------------------------------------------------------------
-
     # -------------------------------------------------------------------------
     first_scenario = enabled_scenarios[0]
     fig12, ax = plt.subplots()
@@ -4506,8 +4559,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     save_figure(fig_tp, "yearly_transmission_probabilities.jpg")
     
     # =========================================================================
-
-    # =========================================================================
     try:
         fig_delay, ax_delay = plt.subplots(figsize=(10, 6))
         delay_summary_rows = []
@@ -4614,8 +4665,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
             plt.close(fig_delay)
     except Exception as e:
         print(f"Diagnosis-to-ART delay analysis failed: {e}")
-
-    # =========================================================================
 
     # =========================================================================
     try:
@@ -4732,8 +4781,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
         print(f"Eligible-to-ART delay analysis failed: {e}")
 
     # =========================================================================
-
-    # =========================================================================
     try:
         risk_summary_rows = []
 
@@ -4805,7 +4852,8 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
 
             if len(msm_source_indices) > 0 and S_msm > 0 and S_eff_msm > 0:
                 vl_bins_msm = get_vl_bin_indices_vectorized(vl[msm_source_indices])
-                p_inf_msm_arr = p_infect_msm_bins[vl_bins_msm]
+                p_inf_msm_arr = _apply_diagnosed_infectivity_factor(
+                    p_infect_msm_bins[vl_bins_msm], pop, msm_source_indices)
                 total_force_msm = float(np.sum(contact_rate_msm * p_inf_msm_arr))
                 if TRANSMISSION_MULTIPLIER_POLICY_ON:
                     total_force_msm *= MAIN_TRANSMISSION_MULTIPLIER
@@ -4822,7 +4870,8 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
 
             if len(het_source_indices) > 0 and S_het > 0 and S_eff_het > 0:
                 vl_bins_het = get_vl_bin_indices_vectorized(vl[het_source_indices])
-                p_inf_het_arr = p_infect_het_bins[vl_bins_het]
+                p_inf_het_arr = _apply_diagnosed_infectivity_factor(
+                    p_infect_het_bins[vl_bins_het], pop, het_source_indices)
                 het_source_activity = pop['activity_multiplier'][het_source_indices]
                 total_force_het = float(np.sum(contact_rate_het * het_source_activity * p_inf_het_arr))
                 if TRANSMISSION_MULTIPLIER_POLICY_ON:
@@ -4847,7 +4896,7 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
 
             mr_month_arr = calc_mortality_risk_batch_v143(
                 cd4[group_indices],
-                pop['age'][group_indices],
+                pop['age'][group_indices] + AGE_MORTALITY_OFFSET,
                 pop['is_aids'][group_indices],
                 pop['gender'][group_indices],
                 pop['on_art'][group_indices],
@@ -4918,8 +4967,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
         print(f"High CD4 & low VL long-term no-ART group analysis failed: {e}")
 
     # =========================================================================
-
-    # =========================================================================
     try:
         burnin_csv = os.path.join(OUTPUT_DIR, "burnin_summary.csv")
         if os.path.exists(burnin_csv):
@@ -4955,8 +5002,6 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
         print(f"Baseline calibration plot failed: {e}")
 
     # =========================================================================
-
-    # =========================================================================
     for s in enabled_scenarios:
         if s == "0 month":
             cd4_dir_name = "cd4_0month"
@@ -4976,7 +5021,7 @@ def save_all_outputs(all_results, all_pops, enabled_scenarios):
     print(f"Enabled scenarios: {enabled_scenarios}")
 
 # =============================================================================
-
+# ART-delay metrics, calibration grid search and summary reports
 # =============================================================================
 
 def _get_art_start_actual_month(pop):
@@ -5351,8 +5396,6 @@ def export_report_ready_summary(all_results, all_pops, enabled_scenarios, output
     import json
 
     # -------------------------------------------------------------
-
-    # -------------------------------------------------------------
     summary_rows = []
     for scenario in enabled_scenarios:
         result = all_results[scenario]
@@ -5397,8 +5440,6 @@ def export_report_ready_summary(all_results, all_pops, enabled_scenarios, output
     summary_records = summary_df.replace({np.nan: None}).to_dict(orient="records")
 
     # -------------------------------------------------------------
-
-    # -------------------------------------------------------------
     years_arr = np.arange(1, years + 1)
     annual_rows = {"Year": years_arr}
 
@@ -5433,8 +5474,6 @@ def export_report_ready_summary(all_results, all_pops, enabled_scenarios, output
     annual_records = annual_df.replace({np.nan: None}).to_dict(orient="records")
 
     # -------------------------------------------------------------
-
-    # -------------------------------------------------------------
     months_arr = np.arange(1, simulation_months + 1)
     monthly_rows = {"Month": months_arr}
     for scenario in enabled_scenarios:
@@ -5448,12 +5487,8 @@ def export_report_ready_summary(all_results, all_pops, enabled_scenarios, output
     monthly_records = monthly_df.replace({np.nan: None}).to_dict(orient="records")
 
     # -------------------------------------------------------------
-
-    # -------------------------------------------------------------
     scenario_long = export_model_summary_all_scenarios(all_results, all_pops, enabled_scenarios)
     scenario_long_records = scenario_long.replace({np.nan: None}).to_dict(orient="records")
-
-    # -------------------------------------------------------------
 
     # -------------------------------------------------------------
     report_json = {
@@ -5770,8 +5805,6 @@ if __name__ == '__main__':
         exit(1)
     
     # =========================================================================
-
-    # =========================================================================
     print("Running burn-in phase (shared by all scenarios)...")
     burnin_pop, _ = run_burnin(seed=SEED)
     print(f"Burn-in complete. Population state: "
@@ -5779,8 +5812,6 @@ if __name__ == '__main__':
           f"HIV+={np.sum(burnin_pop['hiv_positive'] & burnin_pop['alive']):,}, "
           f"On ART={np.sum(burnin_pop['on_art'] & burnin_pop['alive']):,}")
     
-    # =========================================================================
-
     # =========================================================================
     all_results = {}
     all_pops = {}
@@ -5808,12 +5839,8 @@ if __name__ == '__main__':
             print(f"  Completed: {scenario}")
 
     # =========================================================================
-
-    # =========================================================================
     save_all_outputs(all_results, all_pops, enabled_scenarios)
     export_report_ready_summary(all_results, all_pops, enabled_scenarios)
-
-    # =========================================================================
 
     # =========================================================================
     if GRID_SEARCH_ENABLED:
@@ -5842,8 +5869,6 @@ if __name__ == '__main__':
     elapsed = end_time - start_time
     print(f"\nSimulation ended at: {end_time}")
     print(f"Duration: {elapsed}")
-
-    # =========================================================================
 
     # =========================================================================
     export_markdown_report(all_results, all_pops, enabled_scenarios, elapsed=elapsed)

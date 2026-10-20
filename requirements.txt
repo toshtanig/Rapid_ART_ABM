@@ -3,7 +3,7 @@
 # Rapid ART cost-effectiveness microsimulation (HIV, Japan)
 # Pinned to the exact versions used for the published N = 200 analysis.
 #
-# Reproduced from the conda environment "prep_sim" (Python 3.11.15, linux-64) -
+# Reproduced from the conda environment used for the analysis (Python 3.11.15, linux-64) -
 # the environment whose versions are reported in the article Methods. Install
 # into a clean Python 3.11 environment:
 #     python -m pip install -r requirements.txt
@@ -22,12 +22,11 @@ numba==0.64.0
 llvmlite==0.46.0
 
 # --- Figures ---
+openpyxl>=3.1      # Supplementary Figure S1 from the annual-report Excel tables (optional)
 matplotlib==3.10.8
 seaborn==0.13.2
 pillow==12.1.1
 
 # --- Manuscript / Supplement build pipeline only (not required for the model) ---
-# Used by Manuscripts/_build_pipeline/build_docx.py, build_supp.py, build_cover.py
-# to generate the Word deliverables. Pin to the version you have installed; the
-# scripts use only stable python-docx APIs.
+# Used only by the authors' Word build scripts (not included in this repository).
 python-docx>=1.1.0

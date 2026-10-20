@@ -10,7 +10,7 @@ import sys
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # --- Data location: set BASE_144 to your local 144_scenario folder ---
-BASE_144 = r"/path/to/20250315_169/144_scenario"
+BASE_144 = r"/path/to/project/144_scenario"
 PROJ_169 = os.path.dirname(BASE_144)
 _PROJ_144 = BASE_144
 

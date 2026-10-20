@@ -11,7 +11,7 @@ from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # --- Data location: set BASE_144 to your local 144_scenario folder ---
-BASE_144 = r"/path/to/20250315_169/144_scenario"
+BASE_144 = r"/path/to/project/144_scenario"
 PROJ_169 = os.path.dirname(BASE_144)
 BASE_169 = BASE_144
 OUTPUT_DIR = os.path.join(BASE_169, "figures_tiff")
@@ -20,6 +20,7 @@ WIDTH_MM   = 180
 DPI        = 300
 SAVE_TIFF      = True
 SAVE_PNG_PROOF = True
+SHOW_PANEL_TITLES = False   # journal rule: no titles inside the artwork (the legend describes the panels)
 # ===============================================================
 
 plt.rcParams["font.family"] = "sans-serif"
@@ -54,8 +55,9 @@ def main():
     # ----- Panel A: certification pathway (current vs proposed) -----
     axA = fig.add_subplot(gs[0]); axA.set_xlim(0, 1); axA.set_ylim(0, 1); axA.axis("off")
     axA.text(0.0, 0.985, "a", fontsize=11, fontweight="bold", va="top")
-    axA.text(0.03, 0.98, "Disability-certification pathway and the ART-initiation strategies",
-             fontsize=8.5, fontweight="bold", va="top")
+    if SHOW_PANEL_TITLES:
+        axA.text(0.03, 0.98, "Disability-certification pathway and the ART-initiation strategies",
+                 fontsize=8.5, fontweight="bold", va="top")
     axA.text(0.02, 0.905, "CURRENT STANDARD OF CARE  (1–2 month delay)",
              fontsize=7.6, fontweight="bold", color=LINE, va="top")
     # four-week bracket over the two laboratory assessments
@@ -73,7 +75,7 @@ def main():
         arrow(axA, x1, yA+hA/2, x2, yA+hA/2)
     axA.text(0.3725, 0.47, "must meet certification criteria*",
              ha="center", fontsize=7.4, style="italic", color=GREY)
-    axA.text(0.02, 0.385, "PROPOSED — IMMEDIATE ART  (0 month)",
+    axA.text(0.02, 0.385, "PROPOSED: IMMEDIATE ART  (0 month)",
              fontsize=7.6, fontweight="bold", color=ACC, va="top")
     yA2 = 0.16; hA2 = 0.16
     box(axA, 0.02, yA2, 0.105, hA2, "Entry into\ncare", bold=True, edge=ACC)
@@ -93,7 +95,8 @@ def main():
     # ----- Panel B: model structure -----
     axB = fig.add_subplot(gs[1]); axB.set_xlim(0, 1); axB.set_ylim(0, 1); axB.axis("off")
     axB.text(0.0, 0.98, "b", fontsize=11, fontweight="bold", va="top")
-    axB.text(0.03, 0.975, "Agent-based dynamic transmission and care model",
+    if SHOW_PANEL_TITLES:
+        axB.text(0.03, 0.975, "Agent-based dynamic transmission and care model",
              fontsize=8.5, fontweight="bold", va="top")
     yB = 0.55; hB = 0.17
     box(axB, 0.02, yB, 0.135, hB, "Susceptible\nMSM + high-risk\nheterosexual", fs=6.6, bold=True, edge=ACC)
@@ -115,13 +118,13 @@ def main():
         "Certification-eligibility check\n(1 / 2-month arms only;\nelse monthly re-evaluation)", fs=7.0)
     arrow(axB, 0.7325, 0.33, 0.7325, yB-0.003, color=GREY, lw=0.8, ls=(0, (3, 2)))
     # background processes
-    box(axB, 0.02, 0.16, 0.165, hB, "PrEP — reduces HIV\nacquisition (95% effective)\nMSM / heterosexual", fs=6.4)
+    box(axB, 0.02, 0.16, 0.165, hB, "PrEP: reduces HIV\nacquisition (95% effective)\nMSM / heterosexual", fs=6.4)
     box(axB, 0.205, 0.16, 0.175, hB, "Mortality\nbackground + HIV-related\n(CD4 / AIDS dependent)", fs=6.4)
     box(axB, 0.40, 0.16, 0.185, hB, "Demographic turnover\nnew entrants 2%/yr;\nforeign-born HIV inflow", fs=6.4)
     # PrEP acts on susceptibles
     arrow(axB, 0.1025, 0.33, 0.1025, yB-0.003, color=GREY, lw=0.8, ls=(0, (3, 2)))
     axB.text(0.5, 0.062,
-             "Costs (payer perspective) and EQ-5D-5L QALYs accrued over the whole population, discounted 2%/yr.\n"
+             "Costs (payer perspective) and QALYs accrued over the whole population, discounted 2%/yr.\n"
              "Monthly time step, 20-year burn-in + 40-year horizon.",
              ha="center", va="top", fontsize=6.8, color=ACC, linespacing=1.5)
 

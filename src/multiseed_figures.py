@@ -22,18 +22,16 @@ if EXPORT_TIFF:
         lancet_export.enable_tiff_export()
     except Exception as _e:
         print("[lancet_export] disabled:", _e)
-from matplotlib.ticker import MaxNLocator
+from matplotlib.ticker import MaxNLocator, MultipleLocator, FuncFormatter
 
 def _int_year_axis(ax):
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
 
 # =============================================================================
-
-# =============================================================================
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # --- Data location: set BASE_144 to your local 144_scenario folder ---
-BASE_144 = r"/path/to/20250315_169/144_scenario"
+BASE_144 = r"/path/to/project/144_scenario"
 PROJ_169 = os.path.dirname(BASE_144)
 BASE_169 = PROJ_169
 
@@ -53,8 +51,25 @@ BURNIN_END_CAL = 2023
 SCEN_COLS = ["0 month", "1 month", "2 months"]
 
 SCEN_COLOR = {"0 month": "#4C72B0", "1 month": "#55A868", "2 months": "#C44E52"}
+SCEN_LABEL = {"0 month": "Immediate (0 month)", "1 month": "One-month delay", "2 months": "Two-month delay"}
+
+# Figure B (manuscript Figure 2) presentation, following the Lancet figure rules:
+# no title inside the artwork, lowercase panel letters, and a size that prints at 180 mm
+# without shrinking (so that the text prints at about FIG_B_FONT_PT points).
+SHOW_SUPTITLE_B = False
+PANEL_LETTERS_B = True
+FIG_B_SIZE_IN = (7.09, 4.8)   # 180 mm wide
+FIG_B_FONT_PT = 7
+
+# Figure A (Supplementary Figure S2) presentation, same rules as Figure B.
+SHOW_SUPTITLE_A = False
+PANEL_LETTERS_A = True
+FIG_A_SIZE_IN = (7.09, 5.6)   # 180 mm wide
+FIG_A_FONT_PT = 7
 
 DPI = 200
+SHOW_PANEL_TITLES = True   # False: no titles inside the artwork (journal rule; the legend describes the panels)
+CLEAN_SPINES = False       # True: remove the top and right axis lines (no box around the graphs)
 
 OBS_HIV = {2004:780,2005:832,2006:952,2007:1082,2008:1126,2009:1021,2010:1075,2011:1056,
            2012:1002,2013:1106,2014:1091,2015:1006,2016:1011,2017:976,2018:940,2019:903,
@@ -108,6 +123,10 @@ def band_stats(mat):
             center[j] = np.median(col); lo[j] = col.min(); hi[j] = col.max()
     return center, lo, hi
 
+def band_legend_label(n):
+    return {"ci95": "95% CI of the mean", "iqr": "Interquartile range",
+            "pi95": "95% prediction interval", "minmax": "Range"}[BAND] + f" ({n} seeds)"
+
 def band_label(n):
     return {"ci95": f"mean ± 95% CI (n={n})", "iqr": f"median + IQR (n={n})",
             "pi95": f"median + 95% PI (n={n})", "minmax": f"median + min–max (n={n})"}[BAND]
@@ -144,68 +163,91 @@ def fig_calibration(dirs, n):
     if cal is None:
         print("  [A] no burnin data"); return
     obs_total = {y: OBS_HIV.get(y, np.nan) + OBS_AIDS.get(y, np.nan) for y in OBS_HIV}
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    fs = FIG_A_FONT_PT
+    rc = {"font.size": fs, "axes.titlesize": fs + 0.5, "axes.labelsize": fs,
+          "xtick.labelsize": fs - 0.5, "ytick.labelsize": fs - 0.5, "legend.fontsize": fs,
+          "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6}
+    centre_label = "Model (mean)" if BAND == "ci95" else "Model (median)"
     rows = []
+    with plt.rc_context(rc):
+        fig, axes = plt.subplots(2, 2, figsize=FIG_A_SIZE_IN)
 
-    def panel(ax, metric, title, ylab, obs_points=None, ref_band=None):
-        c, lo, hi = band_stats(mats[metric])
-        ax.fill_between(cal, lo, hi, color="#1f77b4", alpha=0.25, label=band_label(n))
-        ax.plot(cal, c, color="#1f77b4", lw=2, label="Model")
-        if obs_points:
-            xs = sorted(obs_points); ys = [obs_points[x] for x in xs]
-            ax.plot(xs, ys, "o", color="#d62728", ms=5, label="Japan observed")
-        if ref_band:
-            ax.axhspan(ref_band[0], ref_band[1], color="green", alpha=0.10, label="Japan estimate range")
-        ax.set_title(title); ax.set_xlabel("Calendar year"); ax.set_ylabel(ylab)
-        ax.grid(True, alpha=0.3); _int_year_axis(ax)
+        def style(ax, title, ylab, k):
+            if SHOW_PANEL_TITLES:
+                ax.set_title(title)
+            ax.set_xlabel("Calendar year"); ax.set_ylabel(ylab)
+            ax.grid(True, alpha=0.3, linewidth=0.5)
+            if CLEAN_SPINES:
+                ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+            ax.xaxis.set_major_locator(MultipleLocator(5))
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
+            if PANEL_LETTERS_A:
+                ax.text(-0.17, 1.03, "abcd"[k], transform=ax.transAxes, fontsize=fs + 3,
+                        fontweight="bold", va="bottom", ha="left")
+
+        def panel(ax, k, metric, title, ylab, obs_points=None):
+            c, lo, hi = band_stats(mats[metric])
+            ax.fill_between(cal, lo, hi, color="#1f77b4", alpha=0.25, linewidth=0)
+            ax.plot(cal, c, color="#1f77b4", lw=1.4)
+            if obs_points:
+                xs = sorted(obs_points); ys = [obs_points[x] for x in xs]
+                ax.plot(xs, ys, "o", color="#d62728", ms=3)
+            style(ax, title, ylab, k)
+            for i, yy in enumerate(cal):
+                rows.append({"calendar_year": int(yy), "metric": metric,
+                             "center": c[i], "lo": lo[i], "hi": hi[i]})
+
+        panel(axes[0, 0], 0, "new_diagnoses_year", "HIV and AIDS notifications per year",
+              "Notifications per year", obs_points=obs_total)
+        panel(axes[0, 1], 1, "on_art", "People currently on ART", "People on ART", obs_points=OBS_ONART_POINTS)
+        panel(axes[1, 0], 2, "new_infections_year", "Modelled new infections per year", "Infections per year")
+
+        c, lo, hi = band_stats(mats["undiag_pct"])
+        ax = axes[1, 1]
+        ax.fill_between(cal, lo, hi, color="#1f77b4", alpha=0.25, linewidth=0)
+        ax.plot(cal, c, color="#1f77b4", lw=1.4)
+        ax.axhspan(UNDIAG_REF_BAND[0], UNDIAG_REF_BAND[1], color="green", alpha=0.10)
+        style(ax, "Undiagnosed fraction", "Undiagnosed (%)", 3)
         for i, yy in enumerate(cal):
-            rows.append({"calendar_year": int(yy), "metric": metric,
-                         "center": c[i], "lo": lo[i], "hi": hi[i]})
+            rows.append({"calendar_year": int(yy), "metric": "undiag_pct", "center": c[i], "lo": lo[i], "hi": hi[i]})
 
-    panel(axes[0, 0], "new_diagnoses_year", "New diagnoses per year",
-          "New HIV+AIDS reports / year", obs_points=obs_total)
-    panel(axes[0, 1], "on_art", "Currently on ART", "Persons on ART", obs_points=OBS_ONART_POINTS)
-    panel(axes[1, 0], "new_infections_year", "New infections per year (modeled)", "New infections / year")
-
-    c, lo, hi = band_stats(mats["undiag_pct"])
-    ax = axes[1, 1]
-    ax.fill_between(cal, lo, hi, color="#1f77b4", alpha=0.25, label=band_label(n))
-    ax.plot(cal, c, color="#1f77b4", lw=2, label="Model")
-    ax.axhspan(UNDIAG_REF_BAND[0], UNDIAG_REF_BAND[1], color="green", alpha=0.10, label="Japan estimate 10–20%")
-    ax.set_title("Undiagnosed fraction"); ax.set_xlabel("Calendar year"); ax.set_ylabel("Undiagnosed (%)")
-    ax.grid(True, alpha=0.3); _int_year_axis(ax)
-    for i, yy in enumerate(cal):
-        rows.append({"calendar_year": int(yy), "metric": "undiag_pct", "center": c[i], "lo": lo[i], "hi": hi[i]})
-
-    from matplotlib.lines import Line2D
-    from matplotlib.patches import Patch
-    legend_handles = [
-        Patch(facecolor="#1f77b4", alpha=0.25, label=band_label(n)),
-        Line2D([0], [0], color="#1f77b4", lw=2, label="Model"),
-        Line2D([0], [0], marker="o", color="#d62728", lw=0, ms=5, label="Japan observed"),
-        Patch(facecolor="green", alpha=0.10, label="Japan estimate (10–20%)"),
-    ]
-    fig.suptitle(f"Calibration: model vs Japan surveillance, 2004–2023  [{band_label(n)}]")
-    fig.legend(handles=legend_handles, loc="lower center", ncol=4, fontsize=8,
-               frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.tight_layout(rect=[0, 0.05, 1, 0.97])
-    fig.savefig(os.path.join(OUTPUT_DIR, "A_calibration.jpg"), dpi=DPI)
-    plt.close(fig)
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        legend_handles = [
+            Line2D([0], [0], color="#1f77b4", lw=1.4, label=centre_label),
+            Patch(facecolor="#1f77b4", alpha=0.25, label=band_legend_label(n)),
+            Line2D([0], [0], marker="o", color="#d62728", lw=0, ms=3, label="Observed (Japan)"),
+            Patch(facecolor="green", alpha=0.10, label="National estimate (10–20%)"),
+        ]
+        fig.legend(handles=legend_handles, loc="lower center", ncol=4, frameon=False,
+                   bbox_to_anchor=(0.5, 0.0))
+        if SHOW_SUPTITLE_A:
+            fig.suptitle(f"Calibration: model vs Japan surveillance, 2004–2023  [{band_label(n)}]")
+            fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+        else:
+            fig.tight_layout(rect=[0, 0.05, 1, 1])
+        fig.savefig(os.path.join(OUTPUT_DIR, "A_calibration.jpg"), dpi=DPI)
+        plt.close(fig)
     pd.DataFrame(rows).to_csv(os.path.join(OUTPUT_DIR, "compiled_calibration.csv"), index=False)
     print("  [A] saved A_calibration.jpg / compiled_calibration.csv")
 
-B_METRICS = [
-    ("yearly_new_infections.csv",            "New infections / year"),
-    ("yearly_new_diagnoses.csv",             "New diagnoses / year"),
-    ("yearly_on_art_current.csv",            "Currently on ART"),
-    ("yearly_cumulative_infected.csv",       "Cumulative infections"),
-    ("yearly_deaths_among_hiv_positives.csv", "Deaths among HIV+ / year"),
-    ("yearly_new_art_starts.csv",            "New ART starts / year"),
+B_METRICS = [   # (per-seed file, panel title, y-axis label)
+    ("yearly_new_infections.csv",             "New infections per year",               "Infections per year"),
+    ("yearly_new_diagnoses.csv",              "New diagnoses per year",                "Diagnoses per year"),
+    ("yearly_on_art_current.csv",             "People currently on ART",               "People on ART"),
+    # Panel d: cumulative NEW infections from the start of the analytic period (2024). The per-seed file
+    # yearly_cumulative_infected.csv counts from the start of the burn-in (initial prevalent people and
+    # 2004 to 2023 infections included, about 36,000 at 2024) and is therefore not used for this panel.
+    ("yearly_new_infections.csv|cumsum",      "Cumulative new infections since 2024", "Cumulative new infections"),
+    ("yearly_deaths_among_hiv_positives.csv", "Deaths among people with HIV per year", "Deaths per year"),
+    ("yearly_new_art_starts.csv",             "New ART initiations per year",          "ART initiations per year"),
 ]
 
 def gather_main(dirs, fname):
     per = {s: [] for s in SCEN_COLS}
     cal = None
+    cumsum = fname.endswith("|cumsum")          # cumulative sum of the yearly values within the analytic period
+    fname = fname.split("|")[0]
     for d in dirs:
         p = os.path.join(d, fname)
         if not os.path.exists(p):
@@ -227,38 +269,60 @@ def gather_main(dirs, fname):
         if cal is None:
             cal = np.array([BURNIN_END_CAL + int(y) for y in df["Year"].to_numpy()])
         for s in SCEN_COLS:
-            per[s].append(df[cols_map[s]].sum(axis=1).to_numpy(dtype=float))
+            v = df[cols_map[s]].sum(axis=1).to_numpy(dtype=float)
+            per[s].append(np.cumsum(v) if cumsum else v)
     mats = {s: np.vstack(per[s]) for s in SCEN_COLS if per[s]}
     return mats, cal
 
 def fig_projection(dirs, n):
-    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
-    axes = axes.ravel()
-    rows = []
-    for k, (fname, ylab) in enumerate(B_METRICS):
-        ax = axes[k]
-        mats, cal = gather_main(dirs, fname)
-        if cal is None:
-            ax.set_visible(False); continue
-        for s in SCEN_COLS:
-            if s not in mats:
-                continue
-            c, lo, hi = band_stats(mats[s])
-            col = SCEN_COLOR[s]
-            ax.fill_between(cal, lo, hi, color=col, alpha=0.18)
-            ax.plot(cal, c, color=col, lw=1.8, label=s)
-            for i, yy in enumerate(cal):
-                rows.append({"calendar_year": int(yy), "scenario": s, "metric": fname.replace("yearly_", "").replace(".csv", ""),
-                             "center": c[i], "lo": lo[i], "hi": hi[i]})
-        ax.set_title(ylab.split(" (")[0]); ax.set_xlabel("Calendar year"); ax.set_ylabel(ylab)
-        ax.grid(True, alpha=0.3); ax.legend(fontsize=8, loc="upper left"); _int_year_axis(ax)
-    if len(B_METRICS) < len(axes):
-        for j in range(len(B_METRICS), len(axes)):
-            axes[j].set_visible(False)
-    fig.suptitle(f"Forward projection by ART-timing scenario, 2024–2063  [{band_label(n)}]")
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
-    fig.savefig(os.path.join(OUTPUT_DIR, "B_projection.jpg"), dpi=DPI)
-    plt.close(fig)
+    fs = FIG_B_FONT_PT
+    rc = {"font.size": fs, "axes.titlesize": fs + 0.5, "axes.labelsize": fs,
+          "xtick.labelsize": fs - 0.5, "ytick.labelsize": fs - 0.5, "legend.fontsize": fs,
+          "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6}
+    with plt.rc_context(rc):
+        fig, axes = plt.subplots(2, 3, figsize=FIG_B_SIZE_IN)
+        axes = axes.ravel()
+        rows = []
+        for k, (fname, title, ylab) in enumerate(B_METRICS):
+            ax = axes[k]
+            mats, cal = gather_main(dirs, fname)
+            if cal is None:
+                ax.set_visible(False); continue
+            for s in SCEN_COLS:
+                if s not in mats:
+                    continue
+                c, lo, hi = band_stats(mats[s])
+                col = SCEN_COLOR[s]
+                ax.fill_between(cal, lo, hi, color=col, alpha=0.18, linewidth=0)
+                ax.plot(cal, c, color=col, lw=1.2, label=SCEN_LABEL.get(s, s))
+                for i, yy in enumerate(cal):
+                    rows.append({"calendar_year": int(yy), "scenario": s,
+                                 "metric": fname.replace("yearly_", "").replace(".csv", "").replace("|cumsum", "_cumulative_since_2024"),
+                                 "center": c[i], "lo": lo[i], "hi": hi[i]})
+            if SHOW_PANEL_TITLES:
+                ax.set_title(title)
+            ax.set_xlabel("Calendar year"); ax.set_ylabel(ylab)
+            ax.grid(True, alpha=0.3, linewidth=0.5)
+            if CLEAN_SPINES:
+                ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+            ax.xaxis.set_major_locator(MultipleLocator(10))   # 2030, 2040, ... (avoids crowded labels at 180 mm)
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:,.0f}"))
+            if PANEL_LETTERS_B:
+                ax.text(-0.26, 1.03, "abcdefgh"[k], transform=ax.transAxes, fontsize=fs + 3,
+                        fontweight="bold", va="bottom", ha="left")
+        if len(B_METRICS) < len(axes):
+            for j in range(len(B_METRICS), len(axes)):
+                axes[j].set_visible(False)
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc="lower center", ncol=len(labels), frameon=False,
+                   bbox_to_anchor=(0.5, 0.0))
+        if SHOW_SUPTITLE_B:
+            fig.suptitle(f"Forward projection by ART-timing scenario, 2024–2063  [{band_label(n)}]")
+            fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+        else:
+            fig.tight_layout(rect=[0, 0.05, 1, 1])
+        fig.savefig(os.path.join(OUTPUT_DIR, "B_projection.jpg"), dpi=DPI)
+        plt.close(fig)
     pd.DataFrame(rows).to_csv(os.path.join(OUTPUT_DIR, "compiled_projection.csv"), index=False)
     print("  [B] saved B_projection.jpg / compiled_projection.csv")
 
@@ -292,8 +356,11 @@ def fig_delay_and_subgroup(dirs, n):
                          "p25": float(np.percentile(arr, 25)), "p75": float(np.percentile(arr, 75)),
                          "p90": float(np.percentile(arr, 90))})
         ax.set_xlim(0, 12); ax.set_xlabel("Delay (months)"); ax.set_ylabel("Cumulative probability")
-        ax.set_title(f"{title} delay (pooled individuals across {n} seeds)")
-        ax.grid(True, alpha=0.3); ax.legend(loc="lower right")
+        if SHOW_PANEL_TITLES:
+            ax.set_title(f"{title} delay (pooled individuals across {n} seeds)")
+        ax.grid(True, alpha=0.3); ax.legend(loc="lower right", frameon=not CLEAN_SPINES)
+        if CLEAN_SPINES:
+            ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
         fig.tight_layout()
         fig.savefig(os.path.join(OUTPUT_DIR, f"C_delay_cdf_{kind}.jpg"), dpi=DPI)
         plt.close(fig)
@@ -322,8 +389,11 @@ def fig_delay_and_subgroup(dirs, n):
                       "center": c[0], "lo": lo[0], "hi": hi[0]})
     ax.set_xticks(range(len(SCEN_COLS))); ax.set_xticklabels(SCEN_COLS)
     ax.set_ylabel("Group size (persons)")
-    ax.set_title(f"High-CD4 / low-VL, long-term untreated group size\n({band_label(n)})", fontsize=11)
+    if SHOW_PANEL_TITLES:
+        ax.set_title(f"High-CD4 / low-VL, long-term untreated group size\n({band_label(n)})", fontsize=11)
     ax.grid(True, axis="y", alpha=0.3)
+    if CLEAN_SPINES:
+        ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
     fig.tight_layout()
     fig.savefig(os.path.join(OUTPUT_DIR, "C_high_cd4_group.jpg"), dpi=DPI)
     plt.close(fig)

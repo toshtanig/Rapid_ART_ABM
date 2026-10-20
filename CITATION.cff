@@ -34,9 +34,9 @@ authors:
     orcid: 'https://orcid.org/0000-0002-3652-7547'
 repository-code: 'https://github.com/toshtanig/Rapid_ART_ABM'
 license: MIT
-version: 1.0.0
-date-released: '2026-08-24'
-doi: '10.5281/zenodo.21931762'
+version: 1.1.0
+date-released: '2026-10-20'
+doi: '10.5281/zenodo.23437249'
 keywords:
   - HIV
   - antiretroviral therapy
@@ -49,8 +49,8 @@ keywords:
 preferred-citation:
   type: article
   title: >-
-    Treating earlier, spending less: cost-effectiveness and budget impact
-    of immediate versus delayed antiretroviral therapy for HIV in Japan
+    Cost-effectiveness and budget impact of immediate versus delayed
+    antiretroviral therapy for HIV in Japan: an agent-based modelling study
   authors:
     - given-names: Toshibumi
       family-names: Taniguchi
