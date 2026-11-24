@@ -34,9 +34,9 @@ authors:
     orcid: 'https://orcid.org/0000-0002-3652-7547'
 repository-code: 'https://github.com/toshtanig/Rapid_ART_ABM'
 license: MIT
-version: 1.1.0
-date-released: '2026-10-20'
-doi: '10.5281/zenodo.23437249'
+version: 1.2.0
+date-released: '2026-11-25'
+doi: '10.5281/zenodo.24494835'
 keywords:
   - HIV
   - antiretroviral therapy

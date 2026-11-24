@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Regression check: compares one seed of A0_regression_check (modified model,
-default configuration) with the same seed of the published run
-(outputs/core_multiseed). Every shared CSV must be identical; any difference means
-the code changes altered the default behaviour or the random-number stream.
+"""Regression check: compares one seed of A0_regression_check (the model of this
+folder with the timing convention and the calibration scalar of versions 1.0.0
+and 1.1.0) with the same seed of the published run (outputs/core_multiseed). Every
+shared CSV must be identical; any difference means that the code changes altered
+the earlier behaviour or the random-number stream.
 
-Run as-is in VS Code after run_revision_scenarios.py with ANALYSIS =
-"A0_regression_check" and SEED_LIMIT = 1.
+Run as-is in VS Code after run_revision_scenarios.py with RUN = "regression".
 """
 
 import os
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _paths import BASE_MULTISEED, REVISION_RUNS
 
 SEED = 14
-NEW_DIR = os.path.join(REVISION_RUNS, "A0_regression_check", "default", f"seed_{SEED}")
+NEW_DIR = os.path.join(REVISION_RUNS, "A0_regression_check", "earlier_convention", f"seed_{SEED}")
 REF_DIR = os.path.join(BASE_MULTISEED, f"seed_{SEED}")
 
 # Files that must match exactly (model outputs). CEA/break-even JSONs are
@@ -90,8 +90,8 @@ def main():
                 print(f"  DIFFERS  {rel}")
     print("\n" + "=" * 60)
     print(f"identical: {n_ok}   different: {n_diff}   missing: {n_missing}")
-    print("REGRESSION CHECK PASSED" if (n_diff == 0 and n_missing == 0)
-          else "REGRESSION CHECK FAILED: do not launch the analyses until this is resolved")
+    print("REGRESSION CHECK PASSED" if (n_diff == 0 and n_missing == 0 and n_ok > 0)
+          else "REGRESSION CHECK FAILED: do not launch the main queue until this is resolved")
     print("=" * 60)
 
 

@@ -1,0 +1,13 @@
+comparison,discount_rate,n_seeds,"Incremental QALYs, direct (95% CI)","Cost saving, billion yen (95% CI)","NMB, billion yen (95% CI)",dominant_seeds,NMB_positive_seeds
+statutory minimum: 0m vs 1m,0.0,200,"21,957 (19,686 to 24,228)",114.4 (110.1 to 118.7),224.2 (211.5 to 236.8),183/200,197/200
+statutory minimum: 0m vs 1m,0.02,200,"13,760 (12,268 to 15,252)",71.2 (68.3 to 74.0),140.0 (131.7 to 148.3),183/200,196/200
+statutory minimum: 0m vs 1m,0.03,200,"11,068 (9,830 to 12,306)",56.9 (54.5 to 59.2),112.2 (105.3 to 119.1),184/200,196/200
+statutory minimum: 0m vs 1m,0.05,200,"7,387 (6,497 to 8,277)",37.2 (35.5 to 38.8),74.1 (69.2 to 79.0),177/200,194/200
+statutory minimum: 0m vs 2m,0.0,200,"28,239 (25,933 to 30,544)",154.2 (149.9 to 158.4),295.4 (282.2 to 308.5),194/200,200/200
+statutory minimum: 0m vs 2m,0.02,200,"17,804 (16,311 to 19,297)",95.8 (93.0 to 98.6),184.8 (176.3 to 193.4),192/200,200/200
+statutory minimum: 0m vs 2m,0.03,200,"14,366 (13,137 to 15,595)",76.5 (74.2 to 78.8),148.3 (141.3 to 155.3),190/200,200/200
+statutory minimum: 0m vs 2m,0.05,200,"9,650 (8,780 to 10,520)",50.0 (48.4 to 51.6),98.2 (93.3 to 103.2),187/200,200/200
+observed practice: 0m vs comparator,0.0,200,"14,135 (11,722 to 16,547)",81.5 (77.6 to 85.3),152.1 (138.7 to 165.5),163/200,185/200
+observed practice: 0m vs comparator,0.02,200,"8,994 (7,440 to 10,547)",51.4 (48.9 to 54.0),96.4 (87.7 to 105.1),162/200,184/200
+observed practice: 0m vs comparator,0.03,200,"7,289 (6,016 to 8,563)",41.4 (39.3 to 43.5),77.9 (70.8 to 85.0),163/200,184/200
+observed practice: 0m vs comparator,0.05,200,"4,938 (4,045 to 5,831)",27.5 (26.1 to 29.0),52.2 (47.3 to 57.2),161/200,182/200

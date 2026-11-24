@@ -1,0 +1,16 @@
+Category,Parameter,Base Value,SE,Distribution,Range (DSA),Unit,Source
+Utility,"Utility (HIV-negative, base: age 30-39)",0.95,0.02,Beta,0.9 - 0.98,,Shiroiwa et al. 2021 Value Health; Japanese EQ-5D-5L population norms (male)
+Other,Off-ART cost ratio,0.45,0.1,Beta,0.2 - 0.8,ratio,Kimura 2002 [PMID 11968794] (Japan inpatient/outpatient HIV costs); Gebo 2010 (HIVRN CD4-stratified HIV care costs)
+Utility,Mental health utility loss per month,0.06,0.02,Beta,0.03 - 0.12,,Shiroiwa 2021 (depression disutility 0.177); Brandt 2017 (HIV anxiety prevalence 30-50%); Calculation: 0.177 x 0.35 = 0.062
+Other,Discount rate (costs),0.02,0.005,Normal,0 - 0.04,per year,Japanese HTA guidelines (C2H)
+Other,Discount rate (QALYs),0.02,0.005,Normal,0 - 0.04,per year,Japanese HTA guidelines (C2H)
+Cost,Annual ART cost (20-29),"2,375,000","475,000",Gamma,"1,900,000 - 2,850,000",JPY,NDB FY2013-2020 (published; ref 17)
+Cost,Annual ART cost (30-39),"2,901,449","580,290",Gamma,"2,321,159 - 3,481,739",JPY,NDB FY2013-2020 (published; ref 17)
+Cost,Annual ART cost (40-49),"3,264,767","652,953",Gamma,"2,611,814 - 3,917,720",JPY,NDB FY2013-2020 (published; ref 17)
+Cost,Annual ART cost (50-59),"3,433,598","686,720",Gamma,"2,746,878 - 4,120,318",JPY,NDB FY2013-2020 (published; ref 17)
+Cost,Annual ART cost (60-69),"3,356,900","671,380",Gamma,"2,685,520 - 4,028,280",JPY,NDB FY2013-2020 (published; ref 17)
+Cost,Annual ART cost (70+),"3,164,654","632,931",Gamma,"2,531,723 - 3,797,585",JPY,NDB FY2013-2020 (published; ref 17)
+Utility,"Utility (CD4>=500, suppressed on ART)",0.87,0.03,Beta,0.8 - 0.93,,Poku 2025 (systematic review); MAINTAIN trial EQ-5D-3L 0.90; SMART/MMP SF-6D 0.73-0.77 (+EQ-5D adj); adjusted for Japanese EQ-5D-5L value set
+Utility,Utility (CD4 350-499),0.83,0.04,Beta,0.74 - 0.9,,Poku 2025; SMART/MMP SF-6D 0.70-0.75 (+EQ-5D adj); adjusted for Japanese context
+Utility,Utility (CD4 200-349),0.76,0.05,Beta,0.65 - 0.85,,Poku 2025; OPTIMA trial EQ-5D-3L 0.77 (median CD4 108); adjusted for Japanese context
+Utility,Utility (CD4<200),0.65,0.06,Beta,0.5 - 0.78,,Poku 2025; SMART/MMP SF-6D 0.67-0.70; pre-ART studies range 0.44-0.85; adjusted for Japanese EQ-5D-5L value set

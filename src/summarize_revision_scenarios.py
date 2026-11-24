@@ -37,7 +37,7 @@ import pandas as pd
 # CONFIG
 # =============================================================================
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _paths import BASE_MULTISEED, REVISION_RUNS
+from _paths import BASE_MULTISEED, REVISION_R1_RUNS as REVISION_RUNS
 
 BASE_MULTISEED_DIR = BASE_MULTISEED     # published 200-seed run (outputs/core_multiseed)
 RUNS_ROOT = REVISION_RUNS

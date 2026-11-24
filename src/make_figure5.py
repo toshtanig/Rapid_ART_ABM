@@ -25,7 +25,7 @@ from PIL import Image
 # =============================================================================
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from _paths import BASE_MULTISEED, FIGURES_R1, REVISION_RUNS as RUNS
+from _paths import BASE_MULTISEED, FIGURES_R1, REVISION_R1_RUNS as RUNS
 SUMMARY = os.path.join(RUNS, "summary", "revision_scenarios_summary.csv")
 A9II = os.path.join(RUNS, "A9_observed_ineligible_wait", "empirical_pathways_plus_observed_tail")
 A10 = os.path.join(RUNS, "A10_conservative_combined", "empirical_tail_behaviour_0.7")

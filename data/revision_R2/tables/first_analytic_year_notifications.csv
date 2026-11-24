@@ -1,0 +1,18 @@
+setting,arm,n_seeds,notifications_2024_mean,pi95_lo,pi95_hi,observed_2024
+B0_core / default,0m,200,868.88,780.975,961.125,994
+B0_core / default,1m,200,871.685,789.925,946.075,994
+B0_core / default,2m,200,872.985,773.825,962.025,994
+A10_conservative_combined / empirical_tail_behaviour_0.3,0m,100,872.27,781.425,998.9499999999997,994
+A10_conservative_combined / empirical_tail_behaviour_0.3,1m,100,873.66,775.75,1013.15,994
+A10_conservative_combined / empirical_tail_behaviour_0.5,0m,50,873.14,792.7,973.1,994
+A10_conservative_combined / empirical_tail_behaviour_0.5,1m,50,878.6,806.7,968.65,994
+A12_age_offset / age_offset_0,0m,30,1018.2666666666667,906.35,1095.875,994
+A12_age_offset / age_offset_0,1m,30,1029.9333333333334,957.175,1120.25,994
+A4_time_to_suppression / fast,0m,30,865.5666666666667,766.875,930.65,994
+A4_time_to_suppression / fast,1m,30,863.0666666666667,785.65,939.275,994
+A4_time_to_suppression / slow,0m,30,883.5333333333333,800.475,983.925,994
+A4_time_to_suppression / slow,1m,30,889.5666666666667,810.5,985.1499999999999,994
+A5_post_diagnosis_behaviour / factor_0.3,0m,100,872.27,781.425,998.9499999999997,994
+A5_post_diagnosis_behaviour / factor_0.3,1m,100,872.22,781.75,966.525,994
+A5_post_diagnosis_behaviour / factor_0.5,0m,100,876.06,791.425,976.625,994
+A5_post_diagnosis_behaviour / factor_0.5,1m,100,879.87,791.475,993.525,994

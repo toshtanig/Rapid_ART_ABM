@@ -151,16 +151,19 @@ POLICY_START_FALLBACK_CONFIG = {"delay_mean": 1.0, "delay_sd": 0.5,
 # None falls back to the SCENARIO_*_ENABLED flags.
 ENABLED_SCENARIO_LABELS = None
 
-# Timing convention for scheduled ART starts (sensitivity analysis A11_timing_convention).
-# False (published behaviour): a person whose scheduled start month arrives starts ART at the beginning
-# of that monthly cycle and receives the first viral-load update in the same cycle, whereas a person who
-# starts immediately at diagnosis (after the viral-load update of the diagnosis month) receives the first
-# update one month later; the realised difference in the onset of viral-load decline between immediate
-# ART and a wait of k months is therefore k - 1 months.
-# True: the first viral-load update of a scheduled starter is also deferred to the month after the start
-# month, so that both pathways share the same convention and the realised difference is k months.
-# Applied in the analytic period only, so that the burn-in and the calibrated 2023 state are unchanged.
-ART_START_VL_UPDATE_NEXT_MONTH = False
+# Timing convention for ART starts within the monthly cycle.
+# True (default from version 1.2.0): for every ART start, the first on-ART person-month is the cycle in
+# which the start is processed and the first viral-load update is in the following cycle. This holds for
+# starts at diagnosis (processed after the viral-load update of the diagnosis month) and, through the
+# deferral applied below, for starts processed at a scheduled start month (eligible people after their
+# wait, restarts after re-engagement), so that the difference in the onset of viral-load decline between
+# immediate ART and a wait of k months is k months, the same as the difference in on-ART person-time.
+# False (versions 1.0.0 and 1.1.0): a scheduled starter receives the first viral-load update in the start
+# cycle itself, so that the difference in the onset of viral-load decline is k - 1 months.
+ART_START_VL_UPDATE_NEXT_MONTH = True
+# The convention applies to the burn-in as well as to the analytic period. False restricts it to the
+# analytic period (the variant reported as a sensitivity analysis with version 1.1.0).
+ART_START_VL_UPDATE_NEXT_MONTH_IN_BURNIN = True
 
 def get_analytic_calendar_year(month):
     """Calendar year of a continuous month index in the analytic period."""
@@ -396,7 +399,10 @@ BURNIN_TRANSMISSION_MULTIPLIER_BY_YEAR = {
 }
 MAIN_TRANSMISSION_MULTIPLIER = 1.18
 
-MORTALITY_RECALIB_FOI_SCALE = 1.05
+# Uniform calibration scalar on the force of infection (burn-in and analytic period). 1.02 from version
+# 1.2.0, re-derived with the uniform timing convention for ART starts (ART_START_VL_UPDATE_NEXT_MONTH);
+# versions 1.0.0 and 1.1.0 used 1.05 with the earlier convention.
+MORTALITY_RECALIB_FOI_SCALE = 1.02
 
 RECENT_FOI_BOOST = 1.04
 RECENT_FOI_BOOST_FROM_YEAR = 2016
@@ -2264,8 +2270,7 @@ def process_single_month(pop, month, label, rngs,
         rng = rngs["art_start"]
         pop['on_art'][art_ready_indices] = True
         pop['cd4_at_art_start'][art_ready_indices] = pop['cd4'][art_ready_indices]
-        if ART_START_VL_UPDATE_NEXT_MONTH and not is_burnin:
-            # analytic period only (the burn-in and hence the calibrated 2023 state are unchanged):
+        if ART_START_VL_UPDATE_NEXT_MONTH and (ART_START_VL_UPDATE_NEXT_MONTH_IN_BURNIN or not is_burnin):
             # defer the first viral-load update to the next cycle; time_since_art becomes 0 at this
             # cycle's update (no change in viral load) and 1 at the next (first reduction)
             pop['time_since_art'][art_ready_indices] = -1.0

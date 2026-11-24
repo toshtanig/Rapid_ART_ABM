@@ -1,0 +1,5 @@
+comparison,risk_group,n_seeds,infections_averted,deaths_hiv_averted,infections_averted_mean,deaths_hiv_averted_mean,comparator_infections_mean,relative_reduction_percent
+0m vs 1m,Heterosexual,200,539 (489 to 588),280 (253 to 306),538.56,279.73,2815.37,19.12927963287241
+0m vs 1m,MSM,200,"3,207 (3,110 to 3,305)","1,944 (1,882 to 2,006)",3207.385,1944.035,12881.1,24.89993090652196
+0m vs 2m,Heterosexual,200,744 (695 to 793),379 (352 to 406),743.815,378.93,3020.625,24.624539623422304
+0m vs 2m,MSM,200,"4,396 (4,305 to 4,487)","2,661 (2,601 to 2,722)",4396.155,2661.035,14069.87,31.24517141949428

@@ -1,0 +1,18 @@
+setting,arm,n_seeds,heterosexual_share_of_infections_percent
+B0_core / default,0m,200,19.051966336206988
+B0_core / default,1m,200,17.936325810835175
+B0_core / default,2m,200,17.674297906526405
+A10_conservative_combined / empirical_tail_behaviour_0.3,0m,100,19.409281678284408
+A10_conservative_combined / empirical_tail_behaviour_0.3,1m,100,19.284605370729608
+A10_conservative_combined / empirical_tail_behaviour_0.5,0m,50,19.292336308135894
+A10_conservative_combined / empirical_tail_behaviour_0.5,1m,50,19.210260214616813
+A12_age_offset / age_offset_0,0m,30,17.290825674867
+A12_age_offset / age_offset_0,1m,30,15.414244813841275
+A4_time_to_suppression / fast,0m,30,19.637973804746302
+A4_time_to_suppression / fast,1m,30,18.092200512561206
+A4_time_to_suppression / slow,0m,30,19.41919157746593
+A4_time_to_suppression / slow,1m,30,17.724735804375268
+A5_post_diagnosis_behaviour / factor_0.3,0m,100,19.409281678284408
+A5_post_diagnosis_behaviour / factor_0.3,1m,100,18.980419584270685
+A5_post_diagnosis_behaviour / factor_0.5,0m,100,19.279392592864617
+A5_post_diagnosis_behaviour / factor_0.5,1m,100,18.488131051895188

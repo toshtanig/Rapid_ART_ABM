@@ -1,0 +1,4 @@
+comparison,horizon_years,n_seeds,Infections averted (95% CI),"Deaths averted, people with HIV (95% CI)","Incremental QALYs, direct (95% CI)","Cost saving, billion yen (95% CI)","NMB, billion yen (95% CI)",dominant_seeds
+statutory minimum: 0m vs 1m,20,200,"2,507 (2,422 to 2,591)",828 (795 to 861),"5,142 (4,290 to 5,994)",25.5 (24.1 to 27.0),51.2 (46.5 to 55.9),158/200
+statutory minimum: 0m vs 2m,20,200,"3,387 (3,304 to 3,471)","1,144 (1,111 to 1,177)","6,911 (6,095 to 7,728)",34.1 (32.7 to 35.4),68.6 (64.1 to 73.1),174/200
+observed practice: 0m vs comparator,20,200,"1,811 (1,737 to 1,886)",634 (603 to 665),"3,624 (2,810 to 4,439)",20.3 (19.0 to 21.7),38.5 (34.0 to 43.0),142/200
